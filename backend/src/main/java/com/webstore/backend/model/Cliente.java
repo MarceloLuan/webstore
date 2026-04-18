@@ -26,16 +26,20 @@ public class Cliente {
     @Column(nullable = false, unique = true)
     private String email;
 
+    @Column
+    private String telefone;
+
     @Column(nullable = false)
     private String senha;
 
     public Cliente() {
     }
 
-    public Cliente(Long id, String nome, String email, String senha) {
+    public Cliente(Long id, String nome, String email, String telefone, String senha) {
         this.id = id;
         this.nome = nome;
         this.email = email;
+        this.telefone = telefone;
         this.senha = senha;
     }
 
@@ -61,6 +65,14 @@ public class Cliente {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public String getTelefone() {
+        return telefone;
+    }
+
+    public void setTelefone(String telefone) {
+        this.telefone = telefone;
     }
 
     public String getSenha() {
@@ -94,6 +106,7 @@ public class Cliente {
                 "id=" + id +
                 ", nome='" + nome + '\'' +
                 ", email='" + email + '\'' +
+                ", telefone='" + telefone + '\'' +
                 '}';
     }
 }

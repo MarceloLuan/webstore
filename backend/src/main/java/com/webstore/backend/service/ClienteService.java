@@ -33,6 +33,7 @@ public class ClienteService {
 
         cliente.setId(null);
         cliente.setEmail(emailNormalizado);
+        cliente.setTelefone(cliente.getTelefone().trim());
         cliente.setSenha(passwordEncoder.encode(cliente.getSenha()));
         return clienteRepository.save(cliente);
     }
@@ -78,6 +79,7 @@ public class ClienteService {
 
         clienteExistente.setNome(clienteAtualizado.getNome().trim());
         clienteExistente.setEmail(emailNormalizado);
+        clienteExistente.setTelefone(clienteAtualizado.getTelefone().trim());
 
         if (StringUtils.hasText(clienteAtualizado.getSenha())) {
             clienteExistente.setSenha(passwordEncoder.encode(clienteAtualizado.getSenha()));
@@ -103,6 +105,9 @@ public class ClienteService {
         if (!StringUtils.hasText(cliente.getEmail())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "E-mail é obrigatório.");
         }
+        if (!StringUtils.hasText(cliente.getTelefone())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Telefone é obrigatório.");
+        }
         if (!StringUtils.hasText(cliente.getSenha())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Senha é obrigatória.");
         }
@@ -117,6 +122,9 @@ public class ClienteService {
         }
         if (!StringUtils.hasText(cliente.getEmail())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "E-mail é obrigatório.");
+        }
+        if (!StringUtils.hasText(cliente.getTelefone())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Telefone é obrigatório.");
         }
     }
 
