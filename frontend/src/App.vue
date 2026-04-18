@@ -62,20 +62,20 @@ body {
   border-bottom: 3px solid var(--primary-wine);
   padding: 0.9rem 1.1rem;
   display: grid;
-  grid-template-columns: 130px 1fr 130px;
+  grid-template-columns: 190px 1fr 190px;
   align-items: center;
   gap: 1rem;
 }
 
 .brand-block {
-  height: 52px;
+  height: 72px;
   display: flex;
   align-items: center;
 }
 
 .brand-logo {
   max-height: 100%;
-  max-width: 120px;
+  max-width: 180px;
   object-fit: contain;
 }
 
@@ -98,8 +98,16 @@ body {
 @media (max-width: 700px) {
   .site-header {
     width: calc(100% - 1rem);
-    grid-template-columns: 86px 1fr 86px;
+    grid-template-columns: 110px 1fr 110px;
     padding: 0.7rem 0.75rem;
+  }
+
+  .brand-block {
+    height: 58px;
+  }
+
+  .brand-logo {
+    max-width: 104px;
   }
 
   .brand-message {

@@ -1,8 +1,10 @@
 <script setup>
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { RouterLink } from 'vue-router'
 import { cadastrarCliente } from '@/services/clienteApi'
 
+const router = useRouter()
 const nome = ref('')
 const email = ref('')
 const telefone = ref('')
@@ -11,6 +13,28 @@ const confirmarSenha = ref('')
 const loading = ref(false)
 const erro = ref('')
 const sucesso = ref('')
+
+function formatarTelefone(valor) {
+  const numeros = valor.replace(/\D/g, '').slice(0, 11)
+
+  if (numeros.length <= 2) {
+    return numeros
+  }
+
+  if (numeros.length <= 6) {
+    return `(${numeros.slice(0, 2)}) ${numeros.slice(2)}`
+  }
+
+  if (numeros.length <= 10) {
+    return `(${numeros.slice(0, 2)}) ${numeros.slice(2, 6)}-${numeros.slice(6)}`
+  }
+
+  return `(${numeros.slice(0, 2)}) ${numeros.slice(2, 7)}-${numeros.slice(7)}`
+}
+
+function aoDigitarTelefone(evento) {
+  telefone.value = formatarTelefone(evento.target.value)
+}
 
 async function enviarCadastro() {
   erro.value = ''
@@ -36,12 +60,13 @@ async function enviarCadastro() {
       senha: senha.value,
     })
 
-    sucesso.value = 'Cadastro realizado com sucesso. Agora faca login.'
+    sucesso.value = 'Cadastro realizado com sucesso. Redirecionando para login...'
     nome.value = ''
     email.value = ''
     telefone.value = ''
     senha.value = ''
     confirmarSenha.value = ''
+    await router.push('/login')
   } catch (e) {
     erro.value = e.message
   } finally {
@@ -62,7 +87,13 @@ async function enviarCadastro() {
       <input id="email" v-model="email" type="email" placeholder="seuemail@exemplo.com" />
 
       <label for="telefone">Telefone</label>
-      <input id="telefone" v-model="telefone" type="tel" placeholder="(00) 00000-0000" />
+      <input
+        id="telefone"
+        v-model="telefone"
+        type="tel"
+        placeholder="(00) 00000-0000"
+        @input="aoDigitarTelefone"
+      />
 
       <label for="senha">Senha</label>
       <input id="senha" v-model="senha" type="password" placeholder="Crie uma senha" />
@@ -85,7 +116,7 @@ async function enviarCadastro() {
 
     <p class="switch-text">
       Ja tem conta?
-      <RouterLink to="/login">Faca login</RouterLink>
+      <RouterLink to="/login">Faça login</RouterLink>
     </p>
   </section>
 </template>

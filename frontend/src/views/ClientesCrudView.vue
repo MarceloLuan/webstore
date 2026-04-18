@@ -18,6 +18,28 @@ const form = ref({
   senha: '',
 })
 
+function formatarTelefone(valor) {
+  const numeros = valor.replace(/\D/g, '').slice(0, 11)
+
+  if (numeros.length <= 2) {
+    return numeros
+  }
+
+  if (numeros.length <= 6) {
+    return `(${numeros.slice(0, 2)}) ${numeros.slice(2)}`
+  }
+
+  if (numeros.length <= 10) {
+    return `(${numeros.slice(0, 2)}) ${numeros.slice(2, 6)}-${numeros.slice(6)}`
+  }
+
+  return `(${numeros.slice(0, 2)}) ${numeros.slice(2, 7)}-${numeros.slice(7)}`
+}
+
+function aoDigitarTelefone(evento) {
+  form.value.telefone = formatarTelefone(evento.target.value)
+}
+
 async function carregarClientes() {
   loading.value = true
   erro.value = ''
@@ -133,7 +155,7 @@ onMounted(() => {
             <th>Nome</th>
             <th>E-mail</th>
             <th>Telefone</th>
-            <th>Acoes</th>
+            <th>Ações</th>
           </tr>
         </thead>
         <tbody>
@@ -162,14 +184,20 @@ onMounted(() => {
       <input id="editEmail" v-model="form.email" type="email" placeholder="seuemail@exemplo.com" />
 
       <label for="editTelefone">Telefone</label>
-      <input id="editTelefone" v-model="form.telefone" type="tel" placeholder="(00) 00000-0000" />
+      <input
+        id="editTelefone"
+        v-model="form.telefone"
+        type="tel"
+        placeholder="(00) 00000-0000"
+        @input="aoDigitarTelefone"
+      />
 
       <label for="editSenha">Nova senha (opcional)</label>
       <input id="editSenha" v-model="form.senha" type="password" placeholder="Somente se quiser trocar" />
 
       <div class="actions-row">
         <button class="btn primary" type="submit" :disabled="salvando">
-          {{ salvando ? 'SALVANDO...' : 'Salvar alteracoes' }}
+          {{ salvando ? 'SALVANDO...' : 'Salvar alterações' }}
         </button>
         <button class="btn secondary" type="button" @click="cancelarEdicao">Cancelar</button>
       </div>
