@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CopilotDiffPersistence">
+    <option name="pendingDiffs">
+      <map>
+        <entry key="$PROJECT_DIR$/backend/src/main/java/com/webstore/backend/model/Administrador.java">
+          <value>
+            <PendingDiffInfo>
+              <option name="filePath" value="$PROJECT_DIR$/backend/src/main/java/com/webstore/backend/model/Administrador.java" />
+              <option name="updatedContent" value="package com.webstore.backend.model;&#10;&#10;import jakarta.persistence.DiscriminatorValue;&#10;import jakarta.persistence.Entity;&#10;&#10;@Entity&#10;@DiscriminatorValue(&quot;ADMIN&quot;)&#10;public class Administrador extends Usuario {&#10;&#10;    public Administrador() {&#10;        super();&#10;    }&#10;&#10;    public Administrador(String nome, String email, String telefone, String senha) {&#10;        super(nome, email, telefone, senha);&#10;    }&#10;}&#10;" />
+            </PendingDiffInfo>
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+</project>

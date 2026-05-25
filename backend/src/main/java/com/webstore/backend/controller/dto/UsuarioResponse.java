@@ -1,10 +1,9 @@
 package com.webstore.backend.controller.dto;
 
 import com.webstore.backend.model.Administrador;
-import com.webstore.backend.model.Cliente;
 import com.webstore.backend.model.Usuario;
 
-public class ClienteResponse {
+public class UsuarioResponse {
 
     private Long id;
     private String nome;
@@ -13,10 +12,10 @@ public class ClienteResponse {
     private String role;
     private Boolean ativo;
 
-    public ClienteResponse() {
+    public UsuarioResponse() {
     }
 
-    public ClienteResponse(Long id, String nome, String email, String telefone, String role, Boolean ativo) {
+    public UsuarioResponse(Long id, String nome, String email, String telefone, String role, Boolean ativo) {
         this.id = id;
         this.nome = nome;
         this.email = email;
@@ -25,13 +24,9 @@ public class ClienteResponse {
         this.ativo = ativo;
     }
 
-    public static ClienteResponse from(Cliente cliente) {
-        return from((Usuario) cliente);
-    }
-
-    public static ClienteResponse from(Usuario usuario) {
+    public static UsuarioResponse from(Usuario usuario) {
         String role = usuario instanceof Administrador ? "ADMIN" : "CLIENTE";
-        return new ClienteResponse(usuario.getId(), usuario.getNome(), usuario.getEmail(), usuario.getTelefone(), role, usuario.getAtivo());
+        return new UsuarioResponse(usuario.getId(), usuario.getNome(), usuario.getEmail(), usuario.getTelefone(), role, usuario.getAtivo());
     }
 
     public Long getId() {
