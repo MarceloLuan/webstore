@@ -4,6 +4,7 @@ import com.webstore.backend.controller.dto.ClienteCadastroRequest;
 import com.webstore.backend.controller.dto.ClienteLoginRequest;
 import com.webstore.backend.controller.dto.ClienteResponse;
 import com.webstore.backend.model.Cliente;
+import com.webstore.backend.model.Usuario;
 import com.webstore.backend.service.ClienteService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -42,8 +43,8 @@ public class ClienteController {
 
     @PostMapping("/login")
     public ResponseEntity<ClienteResponse> login(@RequestBody ClienteLoginRequest request) {
-        Cliente cliente = clienteService.login(request.getEmail(), request.getSenha());
-        return ResponseEntity.ok(ClienteResponse.from(cliente));
+        Usuario usuario = clienteService.login(request.getEmail(), request.getSenha());
+        return ResponseEntity.ok(ClienteResponse.from(usuario));
     }
 
     @GetMapping("/clientes")

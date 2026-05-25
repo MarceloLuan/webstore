@@ -4,14 +4,14 @@ import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
 
 @Entity
-@DiscriminatorValue("CLIENTE")
-public class Cliente extends Usuario {
+@DiscriminatorValue("ADMIN")
+public class Administrador extends Usuario {
 
-    public Cliente() {
+    public Administrador() {
         super();
     }
 
-    public Cliente(String nome, String email, String telefone, String senha) {
+    public Administrador(String nome, String email, String telefone, String senha) {
         super(nome, email, telefone, senha);
     }
 }

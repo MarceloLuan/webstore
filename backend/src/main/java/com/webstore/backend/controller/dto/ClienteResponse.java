@@ -1,6 +1,7 @@
 package com.webstore.backend.controller.dto;
 
 import com.webstore.backend.model.Cliente;
+import com.webstore.backend.model.Usuario;
 
 public class ClienteResponse {
 
@@ -21,6 +22,10 @@ public class ClienteResponse {
 
     public static ClienteResponse from(Cliente cliente) {
         return new ClienteResponse(cliente.getId(), cliente.getNome(), cliente.getEmail(), cliente.getTelefone());
+    }
+
+    public static ClienteResponse from(Usuario usuario) {
+        return new ClienteResponse(usuario.getId(), usuario.getNome(), usuario.getEmail(), usuario.getTelefone());
     }
 
     public Long getId() {
