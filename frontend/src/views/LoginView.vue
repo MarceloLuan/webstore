@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { RouterLink } from 'vue-router'
 import { loginCliente } from '@/services/clienteApi'
+import { setUser } from '@/services/auth'
 
 const router = useRouter()
 const email = ref('')
@@ -28,8 +29,10 @@ async function enviarLogin() {
       senha: senha.value,
     })
 
+    // salvar sessão simples no localStorage e redirecionar para /home
+    setUser(cliente)
     sucesso.value = `Login realizado com sucesso para ${cliente?.nome || email.value}.`
-    router.push('/clientes')
+    router.push('/home')
   } catch (e) {
     erro.value = e.message
   } finally {
