@@ -6,7 +6,6 @@ import com.webstore.backend.service.ContaService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,20 +21,19 @@ public class ContaController {
         this.contaService = contaService;
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<UsuarioResponse> buscar(@PathVariable Long id) {
-        return ResponseEntity.ok(contaService.buscarConta(id));
+    @GetMapping
+    public ResponseEntity<UsuarioResponse> buscar() {
+        return ResponseEntity.ok(contaService.buscarConta());
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<UsuarioResponse> atualizar(@PathVariable Long id,
-                                                     @RequestBody AtualizarContaRequest request) {
-        return ResponseEntity.ok(contaService.atualizarConta(id, request));
+    @PutMapping
+    public ResponseEntity<UsuarioResponse> atualizar(@RequestBody AtualizarContaRequest request) {
+        return ResponseEntity.ok(contaService.atualizarConta(request));
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deletar(@PathVariable Long id) {
-        contaService.deletarConta(id);
+    @DeleteMapping
+    public ResponseEntity<Void> deletar() {
+        contaService.deletarConta();
         return ResponseEntity.noContent().build();
     }
 }

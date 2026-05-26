@@ -3,30 +3,40 @@ package com.webstore.backend.controller;
 import com.webstore.backend.controller.dto.ClienteCadastroRequest;
 import com.webstore.backend.controller.dto.ClienteLoginRequest;
 import com.webstore.backend.controller.dto.ClienteResponse;
+import com.webstore.backend.controller.dto.LoginResponse;
+import com.webstore.backend.controller.dto.UsuarioResponse;
 import com.webstore.backend.model.Cliente;
-import com.webstore.backend.model.Usuario;
 import com.webstore.backend.service.ClienteService;
+import com.webstore.backend.repository.UsuarioRepository;
+import com.webstore.backend.security.JwtUtil;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api")
 public class ClienteController {
 
     private final ClienteService clienteService;
+    private final AuthenticationManager authenticationManager;
+    private final JwtUtil jwtUtil;
+    private final UsuarioRepository usuarioRepository;
 
-    public ClienteController(ClienteService clienteService) {
+    public ClienteController(ClienteService clienteService,
+                             AuthenticationManager authenticationManager,
+                             JwtUtil jwtUtil,
+                             UsuarioRepository usuarioRepository) {
         this.clienteService = clienteService;
+        this.authenticationManager = authenticationManager;
+        this.jwtUtil = jwtUtil;
+        this.usuarioRepository = usuarioRepository;
     }
 
     @PostMapping("/clientes")
@@ -42,43 +52,16 @@ public class ClienteController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<ClienteResponse> login(@RequestBody ClienteLoginRequest request) {
-        Usuario usuario = clienteService.login(request.getEmail(), request.getSenha());
-        return ResponseEntity.ok(ClienteResponse.from(usuario));
-    }
+    public ResponseEntity<LoginResponse> login(@RequestBody ClienteLoginRequest request) {
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getSenha())
+        );
 
-    @GetMapping("/clientes")
-    public ResponseEntity<List<ClienteResponse>> listarTodos() {
-        List<ClienteResponse> clientes = clienteService.listarTodos()
-                .stream()
-                .map(ClienteResponse::from)
-                .toList();
-        return ResponseEntity.ok(clientes);
-    }
+        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+        String token = jwtUtil.generateToken(userDetails);
 
-    @GetMapping("/clientes/{id}")
-    public ResponseEntity<ClienteResponse> buscarPorId(@PathVariable Long id) {
-        Cliente cliente = clienteService.buscarPorId(id);
-        return ResponseEntity.ok(ClienteResponse.from(cliente));
-    }
-
-    @PutMapping("/clientes/{id}")
-    public ResponseEntity<ClienteResponse> atualizar(@PathVariable Long id,
-                                                     @RequestBody ClienteCadastroRequest request) {
-        Cliente clienteAtualizado = new Cliente();
-        clienteAtualizado.setNome(request.getNome());
-        clienteAtualizado.setEmail(request.getEmail());
-        clienteAtualizado.setTelefone(request.getTelefone());
-        clienteAtualizado.setSenha(request.getSenha());
-
-        Cliente clienteSalvo = clienteService.atualizar(id, clienteAtualizado);
-        return ResponseEntity.ok(ClienteResponse.from(clienteSalvo));
-    }
-
-    @DeleteMapping("/clientes/{id}")
-    public ResponseEntity<Void> deletar(@PathVariable Long id) {
-        clienteService.deletar(id);
-        return ResponseEntity.noContent().build();
+        return usuarioRepository.findByEmail(userDetails.getUsername())
+                .map(usuario -> ResponseEntity.ok(new LoginResponse(token, UsuarioResponse.from(usuario))))
+                .orElseThrow(() -> new IllegalStateException("Usuário autenticado não encontrado."));
     }
 }
-

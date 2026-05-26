@@ -1,16 +1,18 @@
 <script setup>
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { RouterLink } from 'vue-router'
 import { loginCliente } from '@/services/clienteApi'
-import { setUser } from '@/services/auth'
+import { setAuthToken, setUser } from '@/services/auth'
 
 const router = useRouter()
+const route = useRoute()
 const email = ref('')
 const senha = ref('')
 const loading = ref(false)
 const erro = ref('')
 const sucesso = ref('')
+const redirectPath = computed(() => route.query.redirect?.toString() || '/home')
 
 async function enviarLogin() {
   erro.value = ''
@@ -24,15 +26,15 @@ async function enviarLogin() {
   loading.value = true
 
   try {
-    const cliente = await loginCliente({
+    const response = await loginCliente({
       email: email.value,
       senha: senha.value,
     })
 
-    // salvar sessão simples no localStorage e redirecionar para /home
-    setUser(cliente)
-    sucesso.value = `Login realizado com sucesso para ${cliente?.nome || email.value}.`
-    router.push('/home')
+    setAuthToken(response.token)
+    setUser(response.user)
+    sucesso.value = `Login realizado com sucesso para ${response.user?.nome || email.value}.`
+    router.push(redirectPath.value)
   } catch (e) {
     erro.value = e.message
   } finally {

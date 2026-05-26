@@ -6,6 +6,9 @@ import com.webstore.backend.model.Administrador;
 import com.webstore.backend.model.Usuario;
 import com.webstore.backend.repository.UsuarioRepository;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,18 +28,18 @@ public class ContaService {
     }
 
     @Transactional(readOnly = true)
-    public UsuarioResponse buscarConta(Long id) {
-        return UsuarioResponse.from(buscarUsuarioAtivo(id));
+    public UsuarioResponse buscarConta() {
+        return UsuarioResponse.from(buscarUsuarioAutenticado());
     }
 
-    public UsuarioResponse atualizarConta(Long id, AtualizarContaRequest request) {
+    public UsuarioResponse atualizarConta(AtualizarContaRequest request) {
         validarRequest(request);
 
-        Usuario usuario = buscarUsuarioAtivo(id);
+        Usuario usuario = buscarUsuarioAutenticado();
         String emailNormalizado = normalizarEmail(request.getEmail());
 
         usuarioRepository.findByEmail(emailNormalizado)
-                .filter(outro -> !outro.getId().equals(id))
+                .filter(outro -> !outro.getId().equals(usuario.getId()))
                 .ifPresent(outro -> {
                     throw new ResponseStatusException(HttpStatus.CONFLICT, "Já existe um usuário cadastrado com este e-mail.");
                 });
@@ -52,8 +55,8 @@ public class ContaService {
         return UsuarioResponse.from(usuarioRepository.save(usuario));
     }
 
-    public void deletarConta(Long id) {
-        Usuario usuario = buscarUsuarioAtivo(id);
+    public void deletarConta() {
+        Usuario usuario = buscarUsuarioAutenticado();
 
         if (usuario instanceof Administrador) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Administrador não pode excluir a própria conta.");
@@ -63,12 +66,22 @@ public class ContaService {
         usuarioRepository.save(usuario);
     }
 
-    private Usuario buscarUsuarioAtivo(Long id) {
-        Usuario usuario = usuarioRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Conta não encontrada."));
+    private Usuario buscarUsuarioAutenticado() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null
+                || !authentication.isAuthenticated()
+                || authentication instanceof AnonymousAuthenticationToken) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuário não autenticado.");
+        }
+
+        String email = authentication.getName();
+
+        Usuario usuario = usuarioRepository.findByEmail(normalizarEmail(email))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuário não autenticado."));
 
         if (!usuario.getAtivo()) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Conta não encontrada.");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Usuário inativo.");
         }
 
         return usuario;

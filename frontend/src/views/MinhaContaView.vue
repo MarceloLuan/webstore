@@ -1,10 +1,9 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { atualizarMinhaConta, buscarMinhaConta, deletarMinhaConta } from '@/services/clienteApi'
 import { clearUser, getUser, setUser } from '@/services/auth'
 
-const route = useRoute()
 const router = useRouter()
 
 const user = ref(getUser())
@@ -21,12 +20,14 @@ const form = ref({
   senha: '',
 })
 
-const accountId = computed(() => {
-  const idFromRoute = route.params.id
-  return Number(idFromRoute || user.value?.id || 0)
-})
-
 const roleLabel = computed(() => (user.value?.role === 'ADMIN' ? 'Administrador' : 'Cliente'))
+
+function isAuthError(message) {
+  return Boolean(
+    message &&
+    (message.includes('não autenticado') || message.includes('Token JWT') || message.includes('inativo')),
+  )
+}
 
 function sincronizarForm(conta) {
   form.value = {
@@ -38,20 +39,21 @@ function sincronizarForm(conta) {
 }
 
 async function carregarConta() {
-  if (!accountId.value) {
-    router.replace('/login')
-    return
-  }
-
   loading.value = true
   erro.value = ''
 
   try {
-    const conta = await buscarMinhaConta(accountId.value)
+    const conta = await buscarMinhaConta()
     user.value = conta
     sincronizarForm(conta)
     setUser(conta)
   } catch (error) {
+    if (isAuthError(error.message)) {
+      clearUser()
+      await router.replace('/login')
+      return
+    }
+
     erro.value = error.message
   } finally {
     loading.value = false
@@ -70,7 +72,10 @@ async function salvarConta() {
   saving.value = true
 
   try {
-    const contaAtualizada = await atualizarMinhaConta(accountId.value, {
+    const oldEmail = user.value?.email || ''
+    const changedPassword = Boolean(form.value.senha)
+
+    const contaAtualizada = await atualizarMinhaConta({
       nome: form.value.nome,
       email: form.value.email,
       telefone: form.value.telefone,
@@ -80,8 +85,21 @@ async function salvarConta() {
     user.value = contaAtualizada
     setUser(contaAtualizada)
     form.value.senha = ''
+
+    if (changedPassword || oldEmail !== contaAtualizada.email) {
+      clearUser()
+      await router.push('/login')
+      return
+    }
+
     sucesso.value = 'Conta atualizada com sucesso.'
   } catch (error) {
+    if (isAuthError(error.message)) {
+      clearUser()
+      await router.replace('/login')
+      return
+    }
+
     erro.value = error.message
   } finally {
     saving.value = false
@@ -100,10 +118,16 @@ async function inativarConta() {
   deleting.value = true
 
   try {
-    await deletarMinhaConta(accountId.value)
+    await deletarMinhaConta()
     clearUser()
     router.push('/login')
   } catch (error) {
+    if (isAuthError(error.message)) {
+      clearUser()
+      await router.replace('/login')
+      return
+    }
+
     erro.value = error.message
   } finally {
     deleting.value = false

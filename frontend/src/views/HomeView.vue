@@ -2,19 +2,15 @@
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { clearUser, getUser } from '@/services/auth'
+import { useProductStore } from '@/services/produtoStore'
 
 const router = useRouter()
 const user = ref(getUser())
+const { activeProducts } = useProductStore()
 
 const role = computed(() => user.value?.role || 'CLIENTE')
 const roleLabel = computed(() => (role.value === 'ADMIN' ? 'Administrador' : 'Cliente'))
 const firstName = computed(() => user.value?.nome?.split(' ')[0] || 'usuário')
-
-const featuredProducts = ref([
-  { id: 1, nome: 'Vestido Floral', preco: 'R$ 129,90', destaque: 'Mais vendido' },
-  { id: 2, nome: 'Blusa de Seda', preco: 'R$ 89,90', destaque: 'Novo' },
-  { id: 3, nome: 'Saia Midi', preco: 'R$ 109,90', destaque: 'Favorito' },
-])
 
 const clientHighlights = [
   'Acompanhe novidades em vitrine destacada',
@@ -32,13 +28,13 @@ const quickStats = computed(() => {
   if (role.value === 'ADMIN') {
     return [
       { label: 'Ações rápidas', value: '2' },
-      { label: 'Produtos em foco', value: `${featuredProducts.value.length}` },
+      { label: 'Produtos em foco', value: `${activeProducts.value.length}` },
       { label: 'Conta', value: 'Ativa' },
     ]
   }
 
   return [
-    { label: 'Produtos em destaque', value: `${featuredProducts.value.length}` },
+    { label: 'Produtos em destaque', value: `${activeProducts.value.length}` },
     { label: 'Conta', value: 'Ativa' },
     { label: 'Acesso', value: 'Livre' },
   ]
@@ -92,26 +88,26 @@ onMounted(() => {
         </div>
 
         <div class="action-grid">
-          <RouterLink class="action-card accent" :to="`/minha-conta/${user?.id}`">
+          <RouterLink class="action-card accent" to="/minha-conta">
             <span>Conta</span>
             <h3>Gerenciar conta</h3>
             <p>Atualizar nome, e-mail, telefone e senha. Excluir deixa a conta inativa.</p>
           </RouterLink>
 
-          <RouterLink v-if="role === 'ADMIN'" class="action-card" to="/clientes">
+          <RouterLink v-if="role === 'ADMIN'" class="action-card" to="/produtos">
             <span>Admin</span>
             <h3>Gerenciar produtos</h3>
-            <p>Quando o backend de produtos entrar, essa área vira o CRUD completo.</p>
+            <p>Acesse o painel para cadastrar, editar e remover produtos.</p>
           </RouterLink>
 
           <div v-else class="action-card product-wall">
             <span>Vitrine</span>
             <h3>Produtos em destaque</h3>
             <div class="product-list">
-              <article v-for="product in featuredProducts" :key="product.id" class="product-card">
+              <article v-for="product in activeProducts" :key="product.id" class="product-card">
                 <small>{{ product.destaque }}</small>
                 <strong>{{ product.nome }}</strong>
-                <span>{{ product.preco }}</span>
+                <span>R$ {{ Number(product.preco).toFixed(2).replace('.', ',') }}</span>
               </article>
             </div>
           </div>

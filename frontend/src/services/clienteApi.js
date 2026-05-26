@@ -1,7 +1,21 @@
+import { getAuthHeader } from '@/services/auth'
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
 
 async function apiRequest(endpoint, options = {}) {
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, options)
+  const headers = {
+    ...(options.headers || {}),
+  }
+
+  const authHeader = getAuthHeader()
+  if (!options.skipAuth && authHeader && !headers.Authorization) {
+    headers.Authorization = authHeader
+  }
+
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    ...options,
+    headers,
+  })
 
   const text = await response.text()
   let data = null
@@ -22,8 +36,9 @@ async function apiRequest(endpoint, options = {}) {
   return data
 }
 
-async function apiPost(endpoint, payload) {
+async function apiPost(endpoint, payload, options = {}) {
   return apiRequest(endpoint, {
+    ...options,
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -33,29 +48,25 @@ async function apiPost(endpoint, payload) {
 }
 
 export function loginCliente({ email, senha }) {
-  return apiPost('/login', { email, senha })
+  return apiPost('/login', { email, senha }, { skipAuth: true })
 }
 
 export function cadastrarCliente({ nome, email, telefone, senha }) {
-  return apiPost('/clientes', { nome, email, telefone, senha })
+  return apiPost('/clientes', { nome, email, telefone, senha }, { skipAuth: true })
 }
 
-export function listarClientes() {
-  return apiRequest('/clientes')
+export function buscarMinhaConta() {
+  return apiRequest('/minha-conta')
 }
 
-export function buscarClientePorId(id) {
-  return apiRequest(`/clientes/${id}`)
-}
-
-export function atualizarCliente(id, { nome, email, telefone, senha }) {
+export function atualizarMinhaConta({ nome, email, telefone, senha }) {
   const payload = { nome, email, telefone }
 
   if (senha) {
     payload.senha = senha
   }
 
-  return apiRequest(`/clientes/${id}`, {
+  return apiRequest('/minha-conta', {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
@@ -64,34 +75,8 @@ export function atualizarCliente(id, { nome, email, telefone, senha }) {
   })
 }
 
-export function deletarCliente(id) {
-  return apiRequest(`/clientes/${id}`, {
-    method: 'DELETE',
-  })
-}
-
-export function buscarMinhaConta(id) {
-  return apiRequest(`/minha-conta/${id}`)
-}
-
-export function atualizarMinhaConta(id, { nome, email, telefone, senha }) {
-  const payload = { nome, email, telefone }
-
-  if (senha) {
-    payload.senha = senha
-  }
-
-  return apiRequest(`/minha-conta/${id}`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(payload),
-  })
-}
-
-export function deletarMinhaConta(id) {
-  return apiRequest(`/minha-conta/${id}`, {
+export function deletarMinhaConta() {
+  return apiRequest('/minha-conta', {
     method: 'DELETE',
   })
 }
