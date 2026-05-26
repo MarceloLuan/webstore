@@ -1,4 +1,11 @@
 import { computed, ref } from 'vue'
+import {
+  criarProduto,
+  excluirProduto,
+  listarProdutos,
+  listarProdutosAdmin,
+  atualizarProduto,
+} from '@/services/clienteApi'
 
 const STORAGE_KEY = 'webstore-products'
 
@@ -8,12 +15,20 @@ const seedProducts = [
   { id: 3, nome: 'Saia Midi', preco: 109.9, destaque: 'Favorito', ativo: true },
 ]
 
-function normalizePrice(value) {
-  const numeric = Number.parseFloat(String(value).replace(',', '.'))
-  return Number.isFinite(numeric) ? numeric : 0
+function normalizeProduct(product) {
+  return {
+    ...product,
+    id: Number(product.id),
+    nome: product.nome ?? '',
+    preco: Number(product.preco ?? 0),
+    destaque: product.destaque || 'Destaque',
+    imagem: product.imagem || '',
+    descricao: product.descricao || '',
+    ativo: product.ativo !== false,
+  }
 }
 
-function loadProducts() {
+function loadCachedProducts() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) {
@@ -21,72 +36,78 @@ function loadProducts() {
     }
 
     const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) && parsed.length ? parsed : seedProducts
+    return Array.isArray(parsed) && parsed.length ? parsed.map(normalizeProduct) : seedProducts
   } catch (error) {
     console.warn('Could not load products from localStorage', error)
     return seedProducts
   }
 }
 
-function persistProducts(products) {
+
+function persistProducts(productsToPersist) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(products))
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(productsToPersist))
   } catch (error) {
     console.warn('Could not persist products to localStorage', error)
   }
 }
 
-const products = ref(loadProducts())
+const products = ref(loadCachedProducts())
 
 const activeProducts = computed(() => products.value.filter((product) => product.ativo))
 
-const nextId = computed(() => {
-  return products.value.reduce((highest, product) => Math.max(highest, product.id || 0), 0) + 1
-})
-
-function listProducts() {
-  return products.value.filter((product) => product.ativo)
+async function loadProducts({ adminMode = false } = {}) {
+  try {
+    const items = adminMode ? await listarProdutosAdmin() : await listarProdutos()
+    const normalized = Array.isArray(items) ? items.map(normalizeProduct) : []
+    products.value = normalized
+    persistProducts(products.value)
+    return products.value
+  } catch (error) {
+    console.warn('Could not load products from backend, using cache', error)
+    const fallback = loadCachedProducts()
+    products.value = fallback
+    return products.value
+  }
 }
 
-function createProduct(product) {
-  const created = {
-    id: nextId.value,
+function listProducts() {
+  return [...products.value]
+}
+
+async function createProduct(product) {
+  const created = normalizeProduct(await criarProduto({
     nome: product.nome.trim(),
-    preco: normalizePrice(product.preco),
+    preco: product.preco,
     destaque: product.destaque.trim() || 'Destaque',
-    ativo: true,
     imagem: product.imagem?.trim() || '',
     descricao: product.descricao?.trim() || '',
-  }
+    ativo: true,
+  }))
 
   products.value = [created, ...products.value]
   persistProducts(products.value)
   return created
 }
 
-function updateProduct(id, product) {
-  const updated = products.value.map((current) => {
-    if (current.id !== id) {
-      return current
-    }
+async function updateProduct(id, product) {
+  const updated = normalizeProduct(await atualizarProduto(id, {
+    nome: product.nome.trim(),
+    preco: product.preco,
+    destaque: product.destaque.trim() || 'Destaque',
+    imagem: product.imagem?.trim() || '',
+    descricao: product.descricao?.trim() || '',
+    ativo: product.ativo ?? true,
+  }))
 
-    return {
-      ...current,
-      nome: product.nome.trim(),
-      preco: normalizePrice(product.preco),
-      destaque: product.destaque.trim() || 'Destaque',
-      imagem: product.imagem?.trim() || '',
-      descricao: product.descricao?.trim() || '',
-    }
-  })
-
-  products.value = updated
+  products.value = products.value.map((current) => (current.id === id ? updated : current))
   persistProducts(products.value)
 
-  return products.value.find((product) => product.id === id) || null
+  return updated
 }
 
-function deleteProduct(id) {
+async function deleteProduct(id) {
+  await excluirProduto(id)
   products.value = products.value.filter((product) => product.id !== id)
   persistProducts(products.value)
 }
@@ -99,6 +120,7 @@ export function useProductStore() {
   return {
     products,
     activeProducts,
+    loadProducts,
     listProducts,
     createProduct,
     updateProduct,

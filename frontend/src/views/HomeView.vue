@@ -6,7 +6,7 @@ import { useProductStore } from '@/services/produtoStore'
 
 const router = useRouter()
 const user = ref(getUser())
-const { activeProducts } = useProductStore()
+const { activeProducts, loadProducts } = useProductStore()
 
 const role = computed(() => user.value?.role || 'CLIENTE')
 const roleLabel = computed(() => (role.value === 'ADMIN' ? 'Administrador' : 'Cliente'))
@@ -45,10 +45,13 @@ function logout() {
   router.push('/login')
 }
 
-onMounted(() => {
+onMounted(async () => {
   if (!user.value) {
     router.replace('/login')
+    return
   }
+
+  await loadProducts()
 })
 </script>
 

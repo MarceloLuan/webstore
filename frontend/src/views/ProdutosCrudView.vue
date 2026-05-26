@@ -8,7 +8,7 @@ import { useProductStore } from '@/services/produtoStore'
 
 const router = useRouter()
 const user = ref(getUser())
-const { activeProducts, createProduct, updateProduct, deleteProduct, findProductById } = useProductStore()
+const { activeProducts, createProduct, updateProduct, deleteProduct, loadProducts } = useProductStore()
 
 const loading = ref(false)
 const editingProductId = ref(null)
@@ -44,7 +44,7 @@ function validateForm() {
   return Boolean(form.nome.trim() && form.preco.toString().trim())
 }
 
-function submitProduct() {
+async function submitProduct() {
   if (!validateForm()) {
     return
   }
@@ -61,9 +61,9 @@ function submitProduct() {
     }
 
     if (isEditing.value) {
-      updateProduct(editingProductId.value, payload)
+      await updateProduct(editingProductId.value, payload)
     } else {
-      createProduct(payload)
+      await createProduct(payload)
     }
 
     resetForm()
@@ -76,13 +76,13 @@ function handleEdit(product) {
   fillForm(product)
 }
 
-function handleDelete(product) {
+async function handleDelete(product) {
   const confirmed = window.confirm(`Excluir o produto "${product.nome}"?`)
   if (!confirmed) {
     return
   }
 
-  deleteProduct(product.id)
+  await deleteProduct(product.id)
 
   if (editingProductId.value === product.id) {
     resetForm()
@@ -94,7 +94,7 @@ function logout() {
   router.push('/login')
 }
 
-onMounted(() => {
+onMounted(async () => {
   if (!user.value) {
     router.replace('/login')
     return
@@ -102,7 +102,10 @@ onMounted(() => {
 
   if (user.value.role !== 'ADMIN') {
     router.replace('/home')
+    return
   }
+
+  await loadProducts({ adminMode: true })
 })
 </script>
 

@@ -80,3 +80,32 @@ export function deletarMinhaConta() {
     method: 'DELETE',
   })
 }
+
+export function listarProdutos() {
+  return apiRequest('/produtos')
+}
+
+export function listarProdutosAdmin() {
+  return apiRequest('/admin/produtos')
+}
+
+export function criarProduto(payload) {
+  return apiPost('/admin/produtos', payload)
+}
+
+export function atualizarProduto(id, payload) {
+  return apiRequest(`/admin/produtos/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  })
+}
+
+export function excluirProduto(id) {
+  return apiRequest(`/admin/produtos/${id}`, {
+    method: 'DELETE',
+  })
+}
+
