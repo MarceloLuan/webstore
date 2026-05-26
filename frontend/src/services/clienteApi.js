@@ -69,3 +69,29 @@ export function deletarCliente(id) {
     method: 'DELETE',
   })
 }
+
+export function buscarMinhaConta(id) {
+  return apiRequest(`/minha-conta/${id}`)
+}
+
+export function atualizarMinhaConta(id, { nome, email, telefone, senha }) {
+  const payload = { nome, email, telefone }
+
+  if (senha) {
+    payload.senha = senha
+  }
+
+  return apiRequest(`/minha-conta/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  })
+}
+
+export function deletarMinhaConta(id) {
+  return apiRequest(`/minha-conta/${id}`, {
+    method: 'DELETE',
+  })
+}
