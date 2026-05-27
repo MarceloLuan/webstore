@@ -10,7 +10,21 @@ const props = defineProps({
       destaque: '',
       imagem: '',
       descricao: '',
+      categoria: '',
+      tamanhos: [{ tamanho: '', quantidade: 1 }],
     }),
+  },
+  categoryOptions: {
+    type: Array,
+    default: () => [],
+  },
+  sizeOptions: {
+    type: Array,
+    default: () => [],
+  },
+  optionsLoading: {
+    type: Boolean,
+    default: false,
   },
   loading: {
     type: Boolean,
@@ -22,14 +36,31 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['update:modelValue', 'submit', 'cancel'])
+const emit = defineEmits(['update:modelValue', 'submit', 'cancel', 'add-size', 'remove-size'])
 
 const form = reactive({ ...props.modelValue })
+
+function ensureSizeRows(value) {
+  return Array.isArray(value) && value.length
+    ? value.map((item) => ({
+        tamanho: item?.tamanho || '',
+        quantidade: Number(item?.quantidade ?? 1),
+      }))
+    : [{ tamanho: '', quantidade: 1 }]
+}
 
 watch(
   () => props.modelValue,
   (value) => {
-    Object.assign(form, value)
+    Object.assign(form, {
+      nome: value?.nome ?? '',
+      preco: value?.preco ?? '',
+      destaque: value?.destaque ?? '',
+      imagem: value?.imagem ?? '',
+      descricao: value?.descricao ?? '',
+      categoria: value?.categoria ?? '',
+      tamanhos: ensureSizeRows(value?.tamanhos),
+    })
   },
   { deep: true },
 )
@@ -41,6 +72,14 @@ watch(
   },
   { deep: true },
 )
+
+function addSizeRow() {
+  emit('add-size')
+}
+
+function removeSizeRow(index) {
+  emit('remove-size', index)
+}
 
 function handleSubmit() {
   emit('submit')
@@ -64,6 +103,35 @@ function handleSubmit() {
 
     <label for="descricao">Descrição curta</label>
     <textarea id="descricao" v-model="form.descricao" rows="4" placeholder="Uma descrição curta para a vitrine"></textarea>
+
+    <label for="categoria">Categoria</label>
+    <select id="categoria" v-model="form.categoria" :disabled="optionsLoading">
+      <option value="">Selecione uma categoria</option>
+      <option v-for="category in categoryOptions" :key="category" :value="category">{{ category }}</option>
+    </select>
+
+    <div class="sizes-section">
+      <div class="sizes-header">
+        <div>
+          <p class="sizes-title">Tamanhos</p>
+          <p class="sizes-help">Selecione uma ou mais combinações de tamanho e estoque.</p>
+        </div>
+        <button class="secondary-button" type="button" @click="addSizeRow">Adicionar tamanho</button>
+      </div>
+
+      <div v-for="(sizeItem, index) in form.tamanhos" :key="index" class="size-row">
+        <label :for="`tamanho-${index}`" class="sr-only">Tamanho {{ index + 1 }}</label>
+        <select :id="`tamanho-${index}`" v-model="sizeItem.tamanho" :disabled="optionsLoading">
+          <option value="">Selecione o tamanho</option>
+          <option v-for="size in sizeOptions" :key="size" :value="size">{{ size }}</option>
+        </select>
+
+        <label :for="`quantidade-${index}`" class="sr-only">Quantidade {{ index + 1 }}</label>
+        <input :id="`quantidade-${index}`" v-model="sizeItem.quantidade" type="number" min="0" step="1" placeholder="Qtd" />
+
+        <button class="remove-button" type="button" @click="removeSizeRow(index)">Remover</button>
+      </div>
+    </div>
 
     <div class="actions-row">
       <button class="primary-button" type="submit" :disabled="loading">
@@ -101,6 +169,65 @@ textarea:focus {
   border-color: #6a1b2c;
 }
 
+select {
+  border: 1px solid #eadfdb;
+  border-radius: 12px;
+  padding: 0.8rem 0.95rem;
+  background: #fdfafa;
+  font-size: 0.96rem;
+  font-family: inherit;
+}
+
+select:focus {
+  outline: 2px solid rgba(106, 27, 44, 0.18);
+  border-color: #6a1b2c;
+}
+
+.sizes-section {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.9rem;
+  border-radius: 16px;
+  background: #fbf7f5;
+  border: 1px solid #edded8;
+}
+
+.sizes-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.sizes-title {
+  margin: 0;
+  color: #5c1a2a;
+  font-weight: 700;
+}
+
+.sizes-help {
+  margin: 0.2rem 0 0;
+  color: #6e6166;
+  font-size: 0.9rem;
+}
+
+.size-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 110px auto;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.remove-button {
+  border: none;
+  border-radius: 999px;
+  padding: 0.72rem 0.9rem;
+  background: #f4ded9;
+  color: #7b1d24;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 .actions-row {
   display: flex;
   gap: 0.75rem;
@@ -125,5 +252,24 @@ textarea:focus {
 .secondary-button {
   background: #f3ebe8;
   color: #5c1a2a;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 720px) {
+  .sizes-header,
+  .size-row {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

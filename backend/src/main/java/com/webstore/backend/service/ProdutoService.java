@@ -69,43 +69,41 @@ public class ProdutoService {
         produto.setImagem(StringUtils.hasText(request.getImagem()) ? request.getImagem().trim() : null);
         produto.setDescricao(StringUtils.hasText(request.getDescricao()) ? request.getDescricao().trim() : null);
         produto.setAtivo(request.getAtivo() == null || request.getAtivo());
-        // categoria
-        if (request.getCategoria() != null) {
-            Categoria c = Categoria.fromLabel(request.getCategoria());
-            produto.setCategoria(c);
-        }
+        produto.setCategoria(validarCategoria(request.getCategoria()));
 
         // tamanhos - reconcile existing
         java.util.List<TamanhoRequest> tamanhoRequests = request.getTamanhos();
-        if (tamanhoRequests != null) {
-            // build map of existing by label
-            java.util.Map<String, ProdutoTamanho> existing = new java.util.HashMap<>();
-            for (ProdutoTamanho pt : produto.getTamanhos()) {
-                if (pt.getTamanho() != null) {
-                    existing.put(pt.getTamanho().getLabel(), pt);
-                }
-            }
-
-            java.util.List<ProdutoTamanho> newList = new java.util.ArrayList<>();
-            for (TamanhoRequest tr : tamanhoRequests) {
-                if (tr == null || tr.getTamanho() == null) continue;
-                Tamanho t = Tamanho.fromLabel(tr.getTamanho());
-                if (t == null) continue;
-                ProdutoTamanho pt = existing.remove(t.getLabel());
-                if (pt == null) {
-                    pt = new ProdutoTamanho();
-                    pt.setProduto(produto);
-                    pt.setTamanho(t);
-                }
-                pt.setQuantidade(tr.getQuantidade());
-                pt.setAtivo(true);
-                newList.add(pt);
-            }
-
-            // orphanRemoval will delete removed ones
-            produto.getTamanhos().clear();
-            produto.getTamanhos().addAll(newList);
+        if (tamanhoRequests == null || tamanhoRequests.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe ao menos um tamanho.");
         }
+
+        // build map of existing by label
+        java.util.Map<String, ProdutoTamanho> existing = new java.util.HashMap<>();
+        for (ProdutoTamanho pt : produto.getTamanhos()) {
+            if (pt.getTamanho() != null) {
+                existing.put(pt.getTamanho().getLabel(), pt);
+            }
+        }
+
+        java.util.List<ProdutoTamanho> newList = new java.util.ArrayList<>();
+        for (TamanhoRequest tr : tamanhoRequests) {
+            Tamanho tamanho = validarTamanho(tr == null ? null : tr.getTamanho());
+            Integer quantidade = validarQuantidade(tr == null ? null : tr.getQuantidade());
+
+            ProdutoTamanho pt = existing.remove(tamanho.getLabel());
+            if (pt == null) {
+                pt = new ProdutoTamanho();
+                pt.setProduto(produto);
+                pt.setTamanho(tamanho);
+            }
+            pt.setQuantidade(quantidade);
+            pt.setAtivo(true);
+            newList.add(pt);
+        }
+
+        // orphanRemoval will delete removed ones
+        produto.getTamanhos().clear();
+        produto.getTamanhos().addAll(newList);
     }
 
     private void validarRequest(ProdutoRequest request) {
@@ -118,6 +116,46 @@ public class ProdutoService {
         if (!StringUtils.hasText(request.getPreco())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Preço é obrigatório.");
         }
+        if (!StringUtils.hasText(request.getCategoria())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Categoria é obrigatória.");
+        }
+        if (request.getTamanhos() == null || request.getTamanhos().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe ao menos um tamanho.");
+        }
+    }
+
+    private Categoria validarCategoria(String value) {
+        if (!StringUtils.hasText(value)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Categoria é obrigatória.");
+        }
+
+        Categoria categoria = Categoria.fromLabel(value);
+        if (categoria == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Categoria inválida.");
+        }
+
+        return categoria;
+    }
+
+    private Tamanho validarTamanho(String value) {
+        if (!StringUtils.hasText(value)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tamanho é obrigatório.");
+        }
+
+        Tamanho tamanho = Tamanho.fromLabel(value);
+        if (tamanho == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tamanho inválido.");
+        }
+
+        return tamanho;
+    }
+
+    private Integer validarQuantidade(Integer value) {
+        if (value == null || value < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Quantidade inválida.");
+        }
+
+        return value;
     }
 
     private String normalizarTexto(String value) {

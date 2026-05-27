@@ -1,6 +1,7 @@
 package com.webstore.backend.controller;
 
 import com.webstore.backend.controller.dto.ProdutoRequest;
+import com.webstore.backend.controller.dto.ProdutoOpcoesResponse;
 import com.webstore.backend.controller.dto.ProdutoResponse;
 import com.webstore.backend.model.Produto;
 import com.webstore.backend.service.ProdutoService;
@@ -35,6 +36,11 @@ public class ProdutoController {
                         .map(ProdutoResponse::from)
                         .toList()
         );
+    }
+
+    @GetMapping("/produtos/opcoes")
+    public ResponseEntity<ProdutoOpcoesResponse> listarOpcoes() {
+        return ResponseEntity.ok(ProdutoOpcoesResponse.fromEnums());
     }
 
     @GetMapping("/admin/produtos")

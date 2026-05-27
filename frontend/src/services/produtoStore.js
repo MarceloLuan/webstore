@@ -3,6 +3,7 @@ import {
   criarProduto,
   excluirProduto,
   listarProdutos,
+  listarProdutoOpcoes,
   listarProdutosAdmin,
   atualizarProduto,
 } from '@/services/clienteApi'
@@ -25,6 +26,13 @@ function normalizeProduct(product) {
     imagem: product.imagem || '',
     descricao: product.descricao || '',
     ativo: product.ativo !== false,
+    categoria: product.categoria || '',
+    tamanhos: Array.isArray(product.tamanhos)
+      ? product.tamanhos.map((item) => ({
+          tamanho: item?.tamanho || '',
+          quantidade: Number(item?.quantidade ?? 0),
+        }))
+      : [],
   }
 }
 
@@ -71,6 +79,15 @@ async function loadProducts({ adminMode = false } = {}) {
   }
 }
 
+async function loadProductOptions() {
+  const options = await listarProdutoOpcoes()
+
+  return {
+    categorias: Array.isArray(options?.categorias) ? options.categorias : [],
+    tamanhos: Array.isArray(options?.tamanhos) ? options.tamanhos : [],
+  }
+}
+
 function listProducts() {
   return [...products.value]
 }
@@ -82,6 +99,13 @@ async function createProduct(product) {
     destaque: product.destaque.trim() || 'Destaque',
     imagem: product.imagem?.trim() || '',
     descricao: product.descricao?.trim() || '',
+    categoria: product.categoria,
+    tamanhos: Array.isArray(product.tamanhos)
+      ? product.tamanhos.map((item) => ({
+          tamanho: item.tamanho,
+          quantidade: Number(item.quantidade),
+        }))
+      : [],
     ativo: true,
   }))
 
@@ -97,6 +121,13 @@ async function updateProduct(id, product) {
     destaque: product.destaque.trim() || 'Destaque',
     imagem: product.imagem?.trim() || '',
     descricao: product.descricao?.trim() || '',
+    categoria: product.categoria,
+    tamanhos: Array.isArray(product.tamanhos)
+      ? product.tamanhos.map((item) => ({
+          tamanho: item.tamanho,
+          quantidade: Number(item.quantidade),
+        }))
+      : [],
     ativo: product.ativo ?? true,
   }))
 
@@ -121,6 +152,7 @@ export function useProductStore() {
     products,
     activeProducts,
     loadProducts,
+    loadProductOptions,
     listProducts,
     createProduct,
     updateProduct,

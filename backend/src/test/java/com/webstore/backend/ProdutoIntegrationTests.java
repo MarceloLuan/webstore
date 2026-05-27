@@ -2,7 +2,10 @@ package com.webstore.backend;
 
 import com.webstore.backend.model.Administrador;
 import com.webstore.backend.model.Cliente;
+import com.webstore.backend.model.Categoria;
 import com.webstore.backend.model.Produto;
+import com.webstore.backend.model.ProdutoTamanho;
+import com.webstore.backend.model.Tamanho;
 import com.webstore.backend.repository.ProdutoRepository;
 import com.webstore.backend.repository.UsuarioRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -84,7 +87,13 @@ class ProdutoIntegrationTests {
                                 "\"preco\":\"109,90\"," +
                                 "\"destaque\":\"Favorito\"," +
                                 "\"imagem\":\"https://img.example/saia.jpg\"," +
-                                "\"descricao\":\"Produto de teste\"}"))
+                    "\"descricao\":\"Produto de teste\"," +
+                    "\"categoria\":\"Saia\"," +
+                    "\"tamanhos\":[{" +
+                    "\"tamanho\":\"P\"," +
+                    "\"quantidade\":10},{" +
+                    "\"tamanho\":\"M\"," +
+                    "\"quantidade\":8}]}"))
                 .andExpect(status().isCreated());
 
         String listBody = mockMvc.perform(get("/api/admin/produtos")
@@ -95,6 +104,9 @@ class ProdutoIntegrationTests {
                 .getContentAsString();
 
         assertThat(listBody).contains("Saia Midi");
+    assertThat(listBody).contains("Saia");
+    assertThat(listBody).contains("P");
+    assertThat(listBody).contains("M");
 
         Long produtoId = produtoRepository.findAll().stream()
                 .findFirst()
@@ -108,6 +120,39 @@ class ProdutoIntegrationTests {
         assertThat(produtoRepository.findById(produtoId)).isEmpty();
     }
 
+    @Test
+    void deveExporOpcoesDeCategoriaETamanho() throws Exception {
+        String responseBody = mockMvc.perform(get("/api/produtos/opcoes"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        assertThat(responseBody).contains("categorias");
+        assertThat(responseBody).contains("tamanhos");
+        assertThat(responseBody).contains("Vestido");
+        assertThat(responseBody).contains("Tamanho Único");
+    }
+
+    @Test
+    void cadastroComCategoriaInvalidaDeveFalhar() throws Exception {
+        usuarioRepository.save(new Administrador("Admin Teste", "admin@test.com", "11999999999", passwordEncoder.encode("123456")));
+        String token = obterToken("admin@test.com", "123456");
+
+        mockMvc.perform(post("/api/admin/produtos")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{" +
+                                "\"nome\":\"Produto X\"," +
+                                "\"preco\":\"109,90\"," +
+                                "\"destaque\":\"Favorito\"," +
+                                "\"categoria\":\"NaoExiste\"," +
+                                "\"tamanhos\":[{" +
+                                "\"tamanho\":\"P\"," +
+                                "\"quantidade\":1}]}"))
+                .andExpect(status().isBadRequest());
+    }
+
     private Produto novoProduto(String nome, String preco, boolean ativo) {
         Produto produto = new Produto();
         produto.setNome(nome);
@@ -116,6 +161,14 @@ class ProdutoIntegrationTests {
         produto.setImagem("");
         produto.setDescricao("");
         produto.setAtivo(ativo);
+        produto.setCategoria(Categoria.VESTIDO);
+
+        ProdutoTamanho tamanho = new ProdutoTamanho();
+        tamanho.setProduto(produto);
+        tamanho.setTamanho(Tamanho.P);
+        tamanho.setQuantidade(1);
+        produto.getTamanhos().add(tamanho);
+
         return produto;
     }
 

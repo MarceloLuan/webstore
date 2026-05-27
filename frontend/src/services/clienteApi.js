@@ -85,6 +85,10 @@ export function listarProdutos() {
   return apiRequest('/produtos')
 }
 
+export function listarProdutoOpcoes() {
+  return apiRequest('/produtos/opcoes')
+}
+
 export function listarProdutosAdmin() {
   return apiRequest('/admin/produtos')
 }

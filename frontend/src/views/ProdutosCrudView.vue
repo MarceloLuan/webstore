@@ -8,17 +8,26 @@ import { useProductStore } from '@/services/produtoStore'
 
 const router = useRouter()
 const user = ref(getUser())
-const { activeProducts, createProduct, updateProduct, deleteProduct, loadProducts } = useProductStore()
+const { activeProducts, createProduct, updateProduct, deleteProduct, loadProducts, loadProductOptions } = useProductStore()
 
 const loading = ref(false)
+const optionsLoading = ref(false)
 const editingProductId = ref(null)
+const categoryOptions = ref([])
+const sizeOptions = ref([])
 const form = reactive({
   nome: '',
   preco: '',
   destaque: '',
   imagem: '',
   descricao: '',
+  categoria: '',
+  tamanhos: [{ tamanho: '', quantidade: 1 }],
 })
+
+function createEmptySizeRow() {
+  return { tamanho: '', quantidade: 1 }
+}
 
 const isEditing = computed(() => editingProductId.value !== null)
 
@@ -28,6 +37,8 @@ function resetForm() {
   form.destaque = ''
   form.imagem = ''
   form.descricao = ''
+  form.categoria = ''
+  form.tamanhos = [createEmptySizeRow()]
   editingProductId.value = null
 }
 
@@ -37,11 +48,38 @@ function fillForm(product) {
   form.destaque = product.destaque
   form.imagem = product.imagem || ''
   form.descricao = product.descricao || ''
+  form.categoria = product.categoria || ''
+  form.tamanhos = Array.isArray(product.tamanhos) && product.tamanhos.length
+    ? product.tamanhos.map((item) => ({
+        tamanho: item.tamanho || '',
+        quantidade: Number(item.quantidade ?? 1),
+      }))
+    : [createEmptySizeRow()]
   editingProductId.value = product.id
 }
 
 function validateForm() {
-  return Boolean(form.nome.trim() && form.preco.toString().trim())
+  return Boolean(
+    form.nome.trim()
+    && form.preco.toString().trim()
+    && form.categoria.trim()
+    && Array.isArray(form.tamanhos)
+    && form.tamanhos.length
+    && form.tamanhos.every((item) => item.tamanho?.trim() && Number(item.quantidade) >= 0),
+  )
+}
+
+function addSizeRow() {
+  form.tamanhos.push(createEmptySizeRow())
+}
+
+function removeSizeRow(index) {
+  if (form.tamanhos.length === 1) {
+    form.tamanhos[0] = createEmptySizeRow()
+    return
+  }
+
+  form.tamanhos.splice(index, 1)
 }
 
 async function submitProduct() {
@@ -58,6 +96,13 @@ async function submitProduct() {
       destaque: form.destaque,
       imagem: form.imagem,
       descricao: form.descricao,
+      categoria: form.categoria,
+      tamanhos: form.tamanhos
+        .filter((item) => item.tamanho?.trim())
+        .map((item) => ({
+          tamanho: item.tamanho,
+          quantidade: Number(item.quantidade),
+        })),
     }
 
     if (isEditing.value) {
@@ -105,6 +150,16 @@ onMounted(async () => {
     return
   }
 
+  optionsLoading.value = true
+
+  try {
+    const options = await loadProductOptions()
+    categoryOptions.value = options.categorias
+    sizeOptions.value = options.tamanhos
+  } finally {
+    optionsLoading.value = false
+  }
+
   await loadProducts({ adminMode: true })
 })
 </script>
@@ -138,6 +193,11 @@ onMounted(async () => {
         <ProdutoForm
           v-model="form"
           :loading="loading"
+          :options-loading="optionsLoading"
+          :category-options="categoryOptions"
+          :size-options="sizeOptions"
+          @add-size="addSizeRow"
+          @remove-size="removeSizeRow"
           :submit-label="isEditing ? 'Salvar alterações' : 'Cadastrar produto'"
           @submit="submitProduct"
           @cancel="resetForm"
