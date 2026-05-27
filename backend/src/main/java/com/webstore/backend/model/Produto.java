@@ -1,14 +1,10 @@
 package com.webstore.backend.model;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "produtos")
@@ -35,6 +31,13 @@ public class Produto {
 
     @Column(nullable = false)
     private Boolean ativo = true;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 50)
+    private Categoria categoria;
+
+    @OneToMany(mappedBy = "produto", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ProdutoTamanho> tamanhos = new ArrayList<>();
 
     public Produto() {
     }
@@ -100,6 +103,22 @@ public class Produto {
 
     public void setAtivo(Boolean ativo) {
         this.ativo = ativo;
+    }
+
+    public Categoria getCategoria() {
+        return categoria;
+    }
+
+    public void setCategoria(Categoria categoria) {
+        this.categoria = categoria;
+    }
+
+    public List<ProdutoTamanho> getTamanhos() {
+        return tamanhos;
+    }
+
+    public void setTamanhos(List<ProdutoTamanho> tamanhos) {
+        this.tamanhos = tamanhos;
     }
 }
 

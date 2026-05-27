@@ -8,6 +8,8 @@ public class ProdutoRequest {
     private String imagem;
     private String descricao;
     private Boolean ativo;
+    private String categoria;
+    private java.util.List<TamanhoRequest> tamanhos;
 
     public String getNome() {
         return nome;
@@ -55,6 +57,22 @@ public class ProdutoRequest {
 
     public void setAtivo(Boolean ativo) {
         this.ativo = ativo;
+    }
+
+    public String getCategoria() {
+        return categoria;
+    }
+
+    public void setCategoria(String categoria) {
+        this.categoria = categoria;
+    }
+
+    public java.util.List<TamanhoRequest> getTamanhos() {
+        return tamanhos;
+    }
+
+    public void setTamanhos(java.util.List<TamanhoRequest> tamanhos) {
+        this.tamanhos = tamanhos;
     }
 }
 

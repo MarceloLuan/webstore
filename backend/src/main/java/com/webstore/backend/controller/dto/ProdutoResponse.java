@@ -13,6 +13,8 @@ public class ProdutoResponse {
     private String imagem;
     private String descricao;
     private Boolean ativo;
+    private String categoria;
+    private java.util.List<TamanhoResponse> tamanhos;
 
     public ProdutoResponse() {
     }
@@ -28,7 +30,7 @@ public class ProdutoResponse {
     }
 
     public static ProdutoResponse from(Produto produto) {
-        return new ProdutoResponse(
+        ProdutoResponse resp = new ProdutoResponse(
                 produto.getId(),
                 produto.getNome(),
                 produto.getPreco(),
@@ -37,6 +39,19 @@ public class ProdutoResponse {
                 produto.getDescricao(),
                 produto.getAtivo()
         );
+        if (produto.getCategoria() != null) {
+            resp.setCategoria(produto.getCategoria().getLabel());
+        }
+        if (produto.getTamanhos() != null) {
+            java.util.List<TamanhoResponse> list = new java.util.ArrayList<>();
+            for (com.webstore.backend.model.ProdutoTamanho pt : produto.getTamanhos()) {
+                if (pt.getAtivo() == null || pt.getAtivo()) {
+                    list.add(TamanhoResponse.from(pt));
+                }
+            }
+            resp.setTamanhos(list);
+        }
+        return resp;
     }
 
     public Long getId() {
@@ -93,6 +108,22 @@ public class ProdutoResponse {
 
     public void setAtivo(Boolean ativo) {
         this.ativo = ativo;
+    }
+
+    public String getCategoria() {
+        return categoria;
+    }
+
+    public void setCategoria(String categoria) {
+        this.categoria = categoria;
+    }
+
+    public java.util.List<TamanhoResponse> getTamanhos() {
+        return tamanhos;
+    }
+
+    public void setTamanhos(java.util.List<TamanhoResponse> tamanhos) {
+        this.tamanhos = tamanhos;
     }
 }
 

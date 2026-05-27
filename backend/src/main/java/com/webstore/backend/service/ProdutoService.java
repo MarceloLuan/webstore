@@ -1,7 +1,8 @@
 package com.webstore.backend.service;
 
 import com.webstore.backend.controller.dto.ProdutoRequest;
-import com.webstore.backend.model.Produto;
+import com.webstore.backend.controller.dto.TamanhoRequest;
+import com.webstore.backend.model.*;
 import com.webstore.backend.repository.ProdutoRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -17,9 +18,11 @@ import java.util.List;
 public class ProdutoService {
 
     private final ProdutoRepository produtoRepository;
+    private final com.webstore.backend.repository.ProdutoTamanhoRepository produtoTamanhoRepository;
 
-    public ProdutoService(ProdutoRepository produtoRepository) {
+    public ProdutoService(ProdutoRepository produtoRepository, com.webstore.backend.repository.ProdutoTamanhoRepository produtoTamanhoRepository) {
         this.produtoRepository = produtoRepository;
+        this.produtoTamanhoRepository = produtoTamanhoRepository;
     }
 
     @Transactional(readOnly = true)
@@ -66,6 +69,43 @@ public class ProdutoService {
         produto.setImagem(StringUtils.hasText(request.getImagem()) ? request.getImagem().trim() : null);
         produto.setDescricao(StringUtils.hasText(request.getDescricao()) ? request.getDescricao().trim() : null);
         produto.setAtivo(request.getAtivo() == null || request.getAtivo());
+        // categoria
+        if (request.getCategoria() != null) {
+            Categoria c = Categoria.fromLabel(request.getCategoria());
+            produto.setCategoria(c);
+        }
+
+        // tamanhos - reconcile existing
+        java.util.List<TamanhoRequest> tamanhoRequests = request.getTamanhos();
+        if (tamanhoRequests != null) {
+            // build map of existing by label
+            java.util.Map<String, ProdutoTamanho> existing = new java.util.HashMap<>();
+            for (ProdutoTamanho pt : produto.getTamanhos()) {
+                if (pt.getTamanho() != null) {
+                    existing.put(pt.getTamanho().getLabel(), pt);
+                }
+            }
+
+            java.util.List<ProdutoTamanho> newList = new java.util.ArrayList<>();
+            for (TamanhoRequest tr : tamanhoRequests) {
+                if (tr == null || tr.getTamanho() == null) continue;
+                Tamanho t = Tamanho.fromLabel(tr.getTamanho());
+                if (t == null) continue;
+                ProdutoTamanho pt = existing.remove(t.getLabel());
+                if (pt == null) {
+                    pt = new ProdutoTamanho();
+                    pt.setProduto(produto);
+                    pt.setTamanho(t);
+                }
+                pt.setQuantidade(tr.getQuantidade());
+                pt.setAtivo(true);
+                newList.add(pt);
+            }
+
+            // orphanRemoval will delete removed ones
+            produto.getTamanhos().clear();
+            produto.getTamanhos().addAll(newList);
+        }
     }
 
     private void validarRequest(ProdutoRequest request) {
