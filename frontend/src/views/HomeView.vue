@@ -8,398 +8,322 @@ const router = useRouter()
 const user = ref(getUser())
 const { activeProducts, loadProducts } = useProductStore()
 
-const role = computed(() => user.value?.role || 'CLIENTE')
-const roleLabel = computed(() => (role.value === 'ADMIN' ? 'Administrador' : 'Cliente'))
-const firstName = computed(() => user.value?.nome?.split(' ')[0] || 'usuário')
-
-const clientHighlights = [
-  'Acompanhe novidades em vitrine destacada',
-  'Gerencie sua conta em poucos cliques',
-  'Tenha acesso rápido ao seu histórico',
-]
-
-const adminHighlights = [
-  'Gerencie sua conta e atualize seus dados',
-  'Organize cadastro e edição de produtos',
-  'Tenha uma visão rápida do painel de loja',
-]
-
-const quickStats = computed(() => {
-  if (role.value === 'ADMIN') {
-    return [
-      { label: 'Ações rápidas', value: '2' },
-      { label: 'Produtos em foco', value: `${activeProducts.value.length}` },
-      { label: 'Conta', value: 'Ativa' },
-    ]
-  }
-
-  return [
-    { label: 'Produtos em destaque', value: `${activeProducts.value.length}` },
-    { label: 'Conta', value: 'Ativa' },
-    { label: 'Acesso', value: 'Livre' },
-  ]
+const authenticated = computed(() => Boolean(user.value))
+const role = computed(() => user.value?.role || 'VISITANTE')
+const roleLabel = computed(() => {
+  if (role.value === 'ADMIN') return 'Administrador'
+  if (authenticated.value) return 'Cliente'
+  return 'Visitante'
 })
+const firstName = computed(() => user.value?.nome?.split(' ')[0] || 'visitante')
 
 function logout() {
   clearUser()
-  router.push('/login')
+  user.value = null
+  router.push('/home')
 }
 
 onMounted(async () => {
-  if (!user.value) {
-    router.replace('/login')
-    return
-  }
-
   await loadProducts()
 })
 </script>
 
 <template>
   <section class="home-page">
-    <div class="home-hero">
-      <div>
-        <p class="eyebrow">WebStore</p>
-        <h1>Olá, {{ firstName }}.</h1>
+    <section class="hero-banner">
+      <div class="hero-copy">
+        <p class="eyebrow">Novidades da semana</p>
+        <h1>{{ authenticated ? `Olá, ${firstName}.` : 'Peças femininas para usar agora.' }}</h1>
         <p class="lead">
-          Sua área inicial foi desenhada para juntar conta, navegação e próximos atalhos numa só tela.
+          {{ authenticated
+            ? 'Continue de onde parou, acompanhe seus dados e veja os lançamentos mais recentes da loja.'
+            : 'Veja os produtos disponíveis, escolha seu look favorito e entre quando quiser para salvar dados ou finalizar a compra.' }}
         </p>
+
+        <div class="hero-actions">
+          <RouterLink v-if="!authenticated" class="hero-button hero-button-solid" to="/login">Entrar</RouterLink>
+          <RouterLink v-if="!authenticated" class="hero-button hero-button-ghost" to="/cadastro">Criar conta</RouterLink>
+          <RouterLink v-if="authenticated" class="hero-button hero-button-solid" to="/minha-conta">Minha conta</RouterLink>
+          <button v-if="authenticated" class="hero-button hero-button-ghost" type="button" @click="logout">Sair</button>
+        </div>
       </div>
 
-      <div class="hero-badge">
-        <span class="badge-label">Perfil</span>
-        <strong>{{ roleLabel }}</strong>
-        <small>{{ role }}</small>
+      <div class="hero-accent">
+        <span>Frete e troca</span>
+        <strong>Compra segura</strong>
+        <small>Atendimento rápido</small>
       </div>
-    </div>
+    </section>
 
-    <div class="stats-grid">
-      <article v-for="stat in quickStats" :key="stat.label" class="stat-card">
-        <span>{{ stat.label }}</span>
-        <strong>{{ stat.value }}</strong>
+    <section class="featured-section">
+      <div class="section-heading">
+        <div>
+          <p class="panel-kicker">Lançamentos</p>
+          <h2>Produtos em destaque</h2>
+        </div>
+
+        <p class="section-note">Escolha entre as peças mais recentes e encontre opções para compor seu próximo look.</p>
+      </div>
+
+      <div class="product-grid">
+        <article v-for="product in activeProducts" :key="product.id" class="product-card">
+          <small>{{ product.destaque }}</small>
+          <strong>{{ product.nome }}</strong>
+          <span>R$ {{ Number(product.preco).toFixed(2).replace('.', ',') }}</span>
+        </article>
+      </div>
+    </section>
+
+    <section class="info-strip">
+      <article class="info-card">
+        <span>Conta</span>
+        <strong>{{ authenticated ? roleLabel : 'Entrar ou criar' }}</strong>
       </article>
-    </div>
 
-    <div class="content-grid">
-      <section class="panel panel-main">
-        <div class="panel-heading">
-          <div>
-            <p class="panel-kicker">Próximos passos</p>
-            <h2>Seu painel inicial</h2>
-          </div>
-          <button class="ghost-button" type="button" @click="logout">Sair</button>
-        </div>
+      <article class="info-card">
+        <span>Compra</span>
+        <strong>{{ authenticated ? 'Mais rápida' : 'Disponível' }}</strong>
+      </article>
 
-        <div class="action-grid">
-          <RouterLink class="action-card accent" to="/minha-conta">
-            <span>Conta</span>
-            <h3>Gerenciar conta</h3>
-            <p>Atualizar nome, e-mail, telefone e senha. Excluir deixa a conta inativa.</p>
-          </RouterLink>
-
-          <RouterLink v-if="role === 'ADMIN'" class="action-card" to="/produtos">
-            <span>Admin</span>
-            <h3>Gerenciar produtos</h3>
-            <p>Acesse o painel para cadastrar, editar e remover produtos.</p>
-          </RouterLink>
-
-          <div v-else class="action-card product-wall">
-            <span>Vitrine</span>
-            <h3>Produtos em destaque</h3>
-            <div class="product-list">
-              <article v-for="product in activeProducts" :key="product.id" class="product-card">
-                <small>{{ product.destaque }}</small>
-                <strong>{{ product.nome }}</strong>
-                <span>R$ {{ Number(product.preco).toFixed(2).replace('.', ',') }}</span>
-              </article>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <aside class="panel panel-side">
-        <p class="panel-kicker">Resumo</p>
-        <h2>{{ roleLabel }}</h2>
-
-        <ul class="benefits">
-          <li v-for="item in role === 'ADMIN' ? adminHighlights : clientHighlights" :key="item">
-            {{ item }}
-          </li>
-        </ul>
-
-        <div class="notice">
-          <strong>Conta ativa</strong>
-          <p>
-            Essa estrutura já deixa pronto o caminho para a tela de conta e, depois, para produtos.
-          </p>
-        </div>
-      </aside>
-    </div>
+      <article class="info-card">
+        <span>Peças</span>
+        <strong>{{ activeProducts.length }} disponíveis</strong>
+      </article>
+    </section>
   </section>
 </template>
 
 <style scoped>
 .home-page {
-  width: min(1140px, 100%);
+  width: min(1280px, calc(100% - 0.5rem));
   margin: 0 auto;
-  padding: 1rem 0 2rem;
+  padding: 0 0 1.2rem;
   display: grid;
   gap: 1rem;
 }
 
-.home-hero {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  align-items: stretch;
-  padding: 1.4rem;
-  border-radius: 24px;
-  background:
-    radial-gradient(circle at top right, rgba(106, 27, 44, 0.16), transparent 35%),
-    linear-gradient(135deg, #fff 0%, #fbf6f3 100%);
-  border: 1px solid rgba(106, 27, 44, 0.08);
-  box-shadow: 0 18px 50px rgba(106, 27, 44, 0.09);
-}
-
 .eyebrow,
-.panel-kicker,
-.badge-label {
+.panel-kicker {
   margin: 0 0 0.35rem;
   text-transform: uppercase;
   letter-spacing: 0.16em;
   font-size: 0.74rem;
-  color: #8f5a67;
+  color: #8c6a4d;
 }
 
 h1,
 h2,
-h3,
 p {
   margin: 0;
 }
 
 h1 {
-  color: #5c1a2a;
-  font-size: clamp(2rem, 4vw, 3.2rem);
+  color: #5b1a26;
+  font-size: clamp(2.3rem, 4.4vw, 4.35rem);
   line-height: 1.05;
   max-width: 12ch;
+  font-family: 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
 }
 
 .lead {
   margin-top: 0.9rem;
-  max-width: 60ch;
-  color: #62525b;
-  font-size: 1.02rem;
-  line-height: 1.6;
+  max-width: 58ch;
+  color: #65565a;
+  font-size: 1rem;
+  line-height: 1.7;
 }
 
-.hero-badge {
-  min-width: 200px;
-  align-self: center;
-  border-radius: 20px;
-  padding: 1rem 1.1rem;
-  background: #6a1b2c;
-  color: #fff;
+.hero-banner {
   display: grid;
-  gap: 0.2rem;
-  box-shadow: 0 18px 40px rgba(106, 27, 44, 0.22);
-}
-
-.hero-badge small {
-  opacity: 0.8;
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.85rem;
-}
-
-.stat-card {
-  padding: 1rem 1.1rem;
-  border-radius: 18px;
-  background: #fff;
-  border: 1px solid rgba(106, 27, 44, 0.08);
-  display: grid;
-  gap: 0.4rem;
-}
-
-.stat-card span {
-  color: #7c6a70;
-  font-size: 0.9rem;
-}
-
-.stat-card strong {
-  color: #5c1a2a;
-  font-size: 1.4rem;
-}
-
-.content-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(260px, 0.8fr);
+  grid-template-columns: minmax(0, 1.35fr) minmax(220px, 0.65fr);
   gap: 1rem;
+  align-items: stretch;
+  min-height: 340px;
+  padding: clamp(1.2rem, 2vw, 2rem);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at top right, rgba(201, 170, 115, 0.26), transparent 34%),
+    linear-gradient(135deg, #6b1f2a 0%, #7f2b39 54%, #efe2d6 100%);
+  border: 1px solid rgba(106, 27, 44, 0.1);
+  box-shadow: 0 20px 50px rgba(106, 27, 44, 0.12);
 }
 
-.panel {
-  border-radius: 24px;
-  padding: 1.3rem;
-  background: #fff;
-  border: 1px solid rgba(106, 27, 44, 0.08);
-  box-shadow: 0 18px 40px rgba(106, 27, 44, 0.08);
+.hero-copy {
+  color: #fff8f1;
+  display: grid;
+  align-content: center;
+  gap: 0.35rem;
+  padding-right: min(4vw, 1.6rem);
 }
 
-.panel-heading {
+.hero-copy .eyebrow,
+.hero-copy .lead {
+  color: rgba(255, 248, 241, 0.88);
+}
+
+.hero-actions {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1rem;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
 }
 
-.ghost-button {
-  border: 1px solid rgba(106, 27, 44, 0.18);
-  background: #fff;
-  color: #5c1a2a;
+.hero-button {
   border-radius: 999px;
-  padding: 0.72rem 1rem;
+  padding: 0.82rem 1.15rem;
+  text-decoration: none;
   font-weight: 700;
-  cursor: pointer;
+  letter-spacing: 0.03em;
+  border: 1px solid transparent;
 }
 
-.action-grid {
+.hero-button-solid {
+  background: #fff;
+  color: #5b1a26;
+}
+
+.hero-button-ghost {
+  background: transparent;
+  color: #fff8f1;
+  border-color: rgba(255, 248, 241, 0.45);
+}
+
+.hero-accent {
+  border-radius: 22px;
+  background: rgba(255, 249, 243, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.4);
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: center;
+  gap: 0.4rem;
+  padding: 1.15rem;
+  color: #5b1a26;
+}
+
+.hero-accent span,
+.hero-accent small {
+  color: #8c6a4d;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.74rem;
+}
+
+.hero-accent strong {
+  font-family: 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
+  font-size: clamp(1.6rem, 2.7vw, 2.4rem);
+}
+
+.featured-section {
+  display: grid;
   gap: 0.9rem;
 }
 
-.action-card {
-  min-height: 190px;
-  border-radius: 20px;
-  padding: 1.1rem;
+.section-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 1rem;
+}
+
+.section-heading h2 {
+  color: #5b1a26;
+  font-size: clamp(1.5rem, 2vw, 2rem);
+  font-family: 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
+}
+
+.section-note {
+  color: #6f5f63;
+  max-width: 42ch;
+  line-height: 1.55;
+  text-align: right;
+}
+
+.product-grid {
   display: grid;
-  gap: 0.6rem;
-  text-decoration: none;
-  color: inherit;
-  background: linear-gradient(180deg, #fbf7f5 0%, #f6eeea 100%);
-  border: 1px solid rgba(106, 27, 44, 0.08);
-}
-
-.action-card.accent {
-  background: linear-gradient(180deg, #6a1b2c 0%, #8d2a43 100%);
-  color: #fff;
-}
-
-.action-card span {
-  font-size: 0.76rem;
-  text-transform: uppercase;
-  letter-spacing: 0.16em;
-  opacity: 0.85;
-}
-
-.action-card h3 {
-  font-size: 1.2rem;
-}
-
-.action-card p {
-  line-height: 1.6;
-  color: inherit;
-  opacity: 0.88;
-}
-
-.product-wall {
-  grid-column: span 2;
-}
-
-.product-list {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.75rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.9rem;
 }
 
 .product-card {
-  border-radius: 16px;
-  padding: 0.95rem;
-  background: rgba(255, 255, 255, 0.6);
+  border-radius: 18px;
+  padding: 1rem;
+  background: #fffaf7;
+  border: 1px solid rgba(106, 27, 44, 0.08);
   display: grid;
-  gap: 0.2rem;
+  gap: 0.28rem;
+  min-height: 132px;
 }
 
 .product-card small {
-  color: #7e6470;
+  color: #8f6a75;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
 }
 
 .product-card strong {
-  color: #5c1a2a;
+  color: #4f1a25;
+  font-size: 0.98rem;
+  font-weight: 600;
 }
 
 .product-card span {
-  color: #4f4a4d;
+  color: #5b1a26;
+  font-size: 1.18rem;
+  font-weight: 700;
 }
 
-.panel-side {
+.info-strip {
   display: grid;
-  align-content: start;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.9rem;
 }
 
-.benefits {
-  margin: 0;
-  padding-left: 1.1rem;
-  color: #5a5054;
-  display: grid;
-  gap: 0.6rem;
-}
-
-.notice {
-  border-radius: 18px;
-  padding: 1rem;
-  background: #f9f3f0;
+.info-card {
+  border-radius: 16px;
+  padding: 0.95rem 1rem;
+  background: rgba(255, 255, 255, 0.74);
   border: 1px solid rgba(106, 27, 44, 0.08);
-  color: #5c1a2a;
+  display: grid;
+  gap: 0.25rem;
 }
 
-.notice p {
-  margin-top: 0.4rem;
-  color: #6b5b61;
-  line-height: 1.5;
+.info-card span {
+  color: #8c6a4d;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.72rem;
+}
+
+.info-card strong {
+  color: #5b1a26;
+  font-size: 1.05rem;
 }
 
 @media (max-width: 960px) {
-  .content-grid,
-  .home-hero {
-    grid-template-columns: 1fr;
-    display: grid;
-  }
-
-  .stats-grid,
-  .action-grid,
-  .product-list {
+  .hero-banner,
+  .info-strip,
+  .product-grid {
     grid-template-columns: 1fr;
   }
 
-  .product-wall {
-    grid-column: auto;
+  .section-heading {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .section-note {
+    text-align: left;
   }
 }
 
 @media (max-width: 640px) {
-  .home-page {
-    padding-top: 0.5rem;
-  }
-
-  .home-hero,
-  .panel {
+  .hero-banner {
     padding: 1rem;
-    border-radius: 18px;
+    border-radius: 22px;
   }
 
-  .panel-heading {
-    flex-direction: column;
-  }
-
-  .hero-badge {
-    min-width: 0;
-    width: 100%;
+  .home-page {
+    width: calc(100% - 0.25rem);
   }
 }
 </style>

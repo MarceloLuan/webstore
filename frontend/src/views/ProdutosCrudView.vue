@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import ProdutoForm from '@/components/produtos/ProdutoForm.vue'
 import ProdutoList from '@/components/produtos/ProdutoList.vue'
@@ -13,91 +13,120 @@ const { activeProducts, createProduct, updateProduct, deleteProduct, loadProduct
 const loading = ref(false)
 const optionsLoading = ref(false)
 const editingProductId = ref(null)
+const feedbackMessage = ref('')
+const feedbackTone = ref('')
 const categoryOptions = ref([])
 const sizeOptions = ref([])
-const form = reactive({
+const form = ref({
   nome: '',
   preco: '',
   destaque: '',
   imagem: '',
   descricao: '',
   categoria: '',
-  tamanhos: [{ tamanho: '', quantidade: 1 }],
+  tamanhos: [],
 })
 
+function createSizeRowId() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+
+  return `size-row-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+}
+
 function createEmptySizeRow() {
-  return { tamanho: '', quantidade: 1 }
+  return { rowId: createSizeRowId(), tamanho: '', quantidade: 1 }
+}
+
+function createInitialForm() {
+  return {
+    nome: '',
+    preco: '',
+    destaque: '',
+    imagem: '',
+    descricao: '',
+    categoria: '',
+    tamanhos: [createEmptySizeRow()],
+  }
+}
+
+function setFeedback(message, tone = 'info') {
+  feedbackMessage.value = message
+  feedbackTone.value = tone
 }
 
 const isEditing = computed(() => editingProductId.value !== null)
 
-function resetForm() {
-  form.nome = ''
-  form.preco = ''
-  form.destaque = ''
-  form.imagem = ''
-  form.descricao = ''
-  form.categoria = ''
-  form.tamanhos = [createEmptySizeRow()]
+function resetForm({ clearFeedback = true } = {}) {
+  form.value = createInitialForm()
   editingProductId.value = null
+  if (clearFeedback) {
+    setFeedback('')
+  }
 }
 
 function fillForm(product) {
-  form.nome = product.nome
-  form.preco = String(product.preco).replace('.', ',')
-  form.destaque = product.destaque
-  form.imagem = product.imagem || ''
-  form.descricao = product.descricao || ''
-  form.categoria = product.categoria || ''
-  form.tamanhos = Array.isArray(product.tamanhos) && product.tamanhos.length
-    ? product.tamanhos.map((item) => ({
-        tamanho: item.tamanho || '',
-        quantidade: Number(item.quantidade ?? 1),
-      }))
-    : [createEmptySizeRow()]
+  form.value = {
+    nome: product.nome,
+    preco: String(product.preco).replace('.', ','),
+    destaque: product.destaque,
+    imagem: product.imagem || '',
+    descricao: product.descricao || '',
+    categoria: product.categoria || '',
+    tamanhos: Array.isArray(product.tamanhos) && product.tamanhos.length
+      ? product.tamanhos.map((item) => ({
+          rowId: item.rowId || item.id || createSizeRowId(),
+          tamanho: item.tamanho || '',
+          quantidade: Number(item.quantidade ?? 1),
+        }))
+      : [createEmptySizeRow()],
+  }
   editingProductId.value = product.id
 }
 
 function validateForm() {
-  return Boolean(
-    form.nome.trim()
-    && form.preco.toString().trim()
-    && form.categoria.trim()
-    && Array.isArray(form.tamanhos)
-    && form.tamanhos.length
-    && form.tamanhos.every((item) => item.tamanho?.trim() && Number(item.quantidade) >= 0),
-  )
+  if (!form.value.nome.trim()) return 'Informe o nome do produto.'
+  if (!form.value.preco.toString().trim()) return 'Informe o preço do produto.'
+  if (!form.value.categoria.trim()) return 'Selecione uma categoria.'
+  if (!Array.isArray(form.value.tamanhos) || !form.value.tamanhos.length) return 'Adicione pelo menos um tamanho.'
+  if (form.value.tamanhos.some((item) => !item.tamanho?.trim())) return 'Selecione todos os tamanhos adicionados.'
+  if (form.value.tamanhos.some((item) => Number(item.quantidade) < 0 || Number.isNaN(Number(item.quantidade)))) {
+    return 'Informe uma quantidade válida para cada tamanho.'
+  }
+
+  return ''
 }
 
 function addSizeRow() {
-  form.tamanhos.push(createEmptySizeRow())
+  form.value.tamanhos.push(createEmptySizeRow())
 }
 
-function removeSizeRow(index) {
-  if (form.tamanhos.length === 1) {
-    form.tamanhos[0] = createEmptySizeRow()
-    return
-  }
+function removeSizeRow(rowId) {
+  const nextRows = form.value.tamanhos.filter((item) => item.rowId !== rowId)
 
-  form.tamanhos.splice(index, 1)
+  form.value.tamanhos = nextRows.length ? nextRows : [createEmptySizeRow()]
 }
 
 async function submitProduct() {
-  if (!validateForm()) {
+  const validationError = validateForm()
+  if (validationError) {
+    setFeedback(validationError, 'error')
     return
   }
 
   loading.value = true
+  setFeedback('')
 
   try {
     const payload = {
-      nome: form.nome,
-      preco: form.preco,
-      destaque: form.destaque,
-      imagem: form.imagem,
-      descricao: form.descricao,
-      categoria: form.categoria,
-      tamanhos: form.tamanhos
+      nome: form.value.nome,
+      preco: form.value.preco,
+      destaque: form.value.destaque,
+      imagem: form.value.imagem,
+      descricao: form.value.descricao,
+      categoria: form.value.categoria,
+      tamanhos: form.value.tamanhos
         .filter((item) => item.tamanho?.trim())
         .map((item) => ({
           tamanho: item.tamanho,
@@ -107,11 +136,15 @@ async function submitProduct() {
 
     if (isEditing.value) {
       await updateProduct(editingProductId.value, payload)
+      setFeedback('Produto atualizado com sucesso.', 'success')
     } else {
       await createProduct(payload)
+      setFeedback('Produto cadastrado com sucesso.', 'success')
     }
 
-    resetForm()
+    resetForm({ clearFeedback: false })
+  } catch (error) {
+    setFeedback(error?.message || 'Não foi possível salvar o produto.', 'error')
   } finally {
     loading.value = false
   }
@@ -189,6 +222,10 @@ onMounted(async () => {
           </div>
           <span class="counter">{{ activeProducts.length }} ativos</span>
         </div>
+
+        <p v-if="feedbackMessage" class="feedback" :class="feedbackTone">
+          {{ feedbackMessage }}
+        </p>
 
         <ProdutoForm
           v-model="form"
@@ -322,6 +359,32 @@ h1 {
 .summary-box strong {
   color: #5c1a2a;
   font-weight: 700;
+}
+
+.feedback {
+  margin: 0 0 0.9rem;
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  line-height: 1.5;
+}
+
+.feedback.error {
+  background: #fdf0ee;
+  color: #7b1d24;
+  border-color: rgba(123, 29, 36, 0.16);
+}
+
+.feedback.success {
+  background: #f3f8ef;
+  color: #395c21;
+  border-color: rgba(57, 92, 33, 0.16);
+}
+
+.feedback.info {
+  background: #f8f3ef;
+  color: #5b1a26;
+  border-color: rgba(91, 26, 38, 0.12);
 }
 
 .ghost-button,

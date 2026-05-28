@@ -11,7 +11,7 @@ const router = createRouter({
   routes: [
     {
       path: '/',
-      redirect: '/login',
+      redirect: '/home',
     },
     {
       path: '/login',
@@ -27,9 +27,6 @@ const router = createRouter({
       path: '/home',
       name: 'home',
       component: HomeView,
-      meta: {
-        requiresAuth: true,
-      },
     },
     {
       path: '/minha-conta',

@@ -10,6 +10,24 @@ import {
 
 const STORAGE_KEY = 'webstore-products'
 
+const fallbackCategoryOptions = [
+  'Vestido',
+  'Blusa',
+  'Camiseta',
+  'Cropped',
+  'Calças',
+  'Shorts',
+  'Saia',
+  'Jaqueta',
+  'Casaco',
+  'Conjunto',
+  'Moda Íntima',
+  'Macacão',
+  'Acessório',
+]
+
+const fallbackSizeOptions = ['36', '38', '40', '42', '44', 'P', 'M', 'G', 'GG', 'G1', 'G2', 'Tamanho Único']
+
 const seedProducts = [
   { id: 1, nome: 'Vestido Floral', preco: 129.9, destaque: 'Mais vendido', ativo: true },
   { id: 2, nome: 'Blusa de Seda', preco: 89.9, destaque: 'Novo', ativo: true },
@@ -80,11 +98,19 @@ async function loadProducts({ adminMode = false } = {}) {
 }
 
 async function loadProductOptions() {
-  const options = await listarProdutoOpcoes()
+  try {
+    const options = await listarProdutoOpcoes()
 
-  return {
-    categorias: Array.isArray(options?.categorias) ? options.categorias : [],
-    tamanhos: Array.isArray(options?.tamanhos) ? options.tamanhos : [],
+    return {
+      categorias: Array.isArray(options?.categorias) && options.categorias.length ? options.categorias : fallbackCategoryOptions,
+      tamanhos: Array.isArray(options?.tamanhos) && options.tamanhos.length ? options.tamanhos : fallbackSizeOptions,
+    }
+  } catch (error) {
+    console.warn('Could not load product options from backend, using fallback options', error)
+    return {
+      categorias: fallbackCategoryOptions,
+      tamanhos: fallbackSizeOptions,
+    }
   }
 }
 

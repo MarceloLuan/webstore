@@ -38,29 +38,65 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'submit', 'cancel', 'add-size', 'remove-size'])
 
-const form = reactive({ ...props.modelValue })
+function createSizeRowId() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
 
-function ensureSizeRows(value) {
+  return `size-row-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+}
+
+function normalizeSizeRows(value) {
   return Array.isArray(value) && value.length
     ? value.map((item) => ({
+        rowId: item?.rowId || item?.id || createSizeRowId(),
         tamanho: item?.tamanho || '',
         quantidade: Number(item?.quantidade ?? 1),
       }))
-    : [{ tamanho: '', quantidade: 1 }]
+    : [{ rowId: createSizeRowId(), tamanho: '', quantidade: 1 }]
 }
+
+function normalizeForm(value) {
+  return {
+    nome: value?.nome ?? '',
+    preco: value?.preco ?? '',
+    destaque: value?.destaque ?? '',
+    imagem: value?.imagem ?? '',
+    descricao: value?.descricao ?? '',
+    categoria: value?.categoria ?? '',
+    tamanhos: normalizeSizeRows(value?.tamanhos),
+  }
+}
+
+function isSameSizeRow(left, right) {
+  return left?.rowId === right?.rowId
+    && left?.tamanho === right?.tamanho
+    && Number(left?.quantidade ?? 0) === Number(right?.quantidade ?? 0)
+}
+
+function isSameForm(left, right) {
+  return left.nome === right.nome
+    && left.preco === right.preco
+    && left.destaque === right.destaque
+    && left.imagem === right.imagem
+    && left.descricao === right.descricao
+    && left.categoria === right.categoria
+    && Array.isArray(left.tamanhos)
+    && Array.isArray(right.tamanhos)
+    && left.tamanhos.length === right.tamanhos.length
+    && left.tamanhos.every((item, index) => isSameSizeRow(item, right.tamanhos[index]))
+}
+
+const form = reactive(normalizeForm(props.modelValue))
 
 watch(
   () => props.modelValue,
   (value) => {
-    Object.assign(form, {
-      nome: value?.nome ?? '',
-      preco: value?.preco ?? '',
-      destaque: value?.destaque ?? '',
-      imagem: value?.imagem ?? '',
-      descricao: value?.descricao ?? '',
-      categoria: value?.categoria ?? '',
-      tamanhos: ensureSizeRows(value?.tamanhos),
-    })
+    const nextForm = normalizeForm(value)
+
+    if (!isSameForm(form, nextForm)) {
+      Object.assign(form, nextForm)
+    }
   },
   { deep: true },
 )
@@ -68,7 +104,11 @@ watch(
 watch(
   form,
   (value) => {
-    emit('update:modelValue', { ...value })
+    const nextForm = normalizeForm(value)
+
+    if (!isSameForm(nextForm, props.modelValue || {})) {
+      emit('update:modelValue', nextForm)
+    }
   },
   { deep: true },
 )
@@ -119,7 +159,7 @@ function handleSubmit() {
         <button class="secondary-button" type="button" @click="addSizeRow">Adicionar tamanho</button>
       </div>
 
-      <div v-for="(sizeItem, index) in form.tamanhos" :key="index" class="size-row">
+      <div v-for="(sizeItem, index) in form.tamanhos" :key="sizeItem.rowId" class="size-row">
         <label :for="`tamanho-${index}`" class="sr-only">Tamanho {{ index + 1 }}</label>
         <select :id="`tamanho-${index}`" v-model="sizeItem.tamanho" :disabled="optionsLoading">
           <option value="">Selecione o tamanho</option>
@@ -129,7 +169,7 @@ function handleSubmit() {
         <label :for="`quantidade-${index}`" class="sr-only">Quantidade {{ index + 1 }}</label>
         <input :id="`quantidade-${index}`" v-model="sizeItem.quantidade" type="number" min="0" step="1" placeholder="Qtd" />
 
-        <button class="remove-button" type="button" @click="removeSizeRow(index)">Remover</button>
+        <button class="remove-button" type="button" @click="removeSizeRow(sizeItem.rowId)">Remover</button>
       </div>
     </div>
 

@@ -1,18 +1,64 @@
 <script setup>
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterView } from 'vue-router'
 import logo from '@/assets/logo.png'
+import { getUser } from '@/services/auth'
+
+const user = ref(getUser())
+let authSyncTimer = null
+
+function refreshAuthState() {
+  user.value = getUser()
+}
+
+const isAdmin = computed(() => user.value?.role === 'ADMIN')
+const accountTarget = computed(() => (user.value ? '/minha-conta' : '/login'))
+
+onMounted(() => {
+  refreshAuthState()
+  authSyncTimer = setInterval(refreshAuthState, 500)
+})
+
+onBeforeUnmount(() => {
+  if (authSyncTimer) {
+    clearInterval(authSyncTimer)
+    authSyncTimer = null
+  }
+})
 </script>
 
 <template>
   <div class="app-shell">
     <header class="site-header">
-      <div class="brand-block">
-        <img :src="logo" alt="Logo da WebStore" class="brand-logo" />
+      <div class="header-top">
+        <RouterLink to="/home" class="brand-block" aria-label="Ir para a home">
+          <img :src="logo" alt="Logo da WebStore" class="brand-logo" />
+        </RouterLink>
+
+        <div class="header-actions">
+          <RouterLink class="icon-button" :to="accountTarget" :aria-label="user ? 'Minha conta' : 'Entrar'">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm0 2c-4.42 0-8 2.24-8 5v1h16v-1c0-2.76-3.58-5-8-5Z" />
+            </svg>
+          </RouterLink>
+
+          <button class="icon-button" type="button" aria-label="Carrinho em breve">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M7 4h-2l-1 2v2h2l3.6 7.59-1.35 2.41A2 2 0 0 0 10 21h9v-2h-8.42a.25.25 0 0 1-.21-.38L11 16h6.55a2 2 0 0 0 1.8-1.11L22 8H8.42L7.8 6.5h11.9V4H7Zm2 16a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm8 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z" />
+            </svg>
+          </button>
+        </div>
       </div>
 
-      <p class="brand-message">O Melhor da Moda Feminina</p>
-
-      <div class="brand-block" aria-hidden="true"></div>
+      <nav class="site-nav" aria-label="Categorias">
+        <RouterLink class="nav-link" to="/home">Novidades</RouterLink>
+        <RouterLink class="nav-link" to="/home">Blusas</RouterLink>
+        <RouterLink class="nav-link" to="/home">Camisas</RouterLink>
+        <RouterLink class="nav-link" to="/home">Camisetas</RouterLink>
+        <RouterLink class="nav-link" to="/home">Calças</RouterLink>
+        <RouterLink class="nav-link" to="/home">Acessórios</RouterLink>
+        <RouterLink v-if="isAdmin" class="nav-link nav-admin-link" to="/produtos">Gerenciar produtos</RouterLink>
+      </nav>
     </header>
 
     <main class="content-area">
@@ -26,8 +72,11 @@ import logo from '@/assets/logo.png'
   --bg-beige: #f3e8df;
   --card-white: #ffffff;
   --primary-wine: #6a1b2c;
+  --primary-wine-deep: #531724;
+  --gold-soft: #c9aa73;
   --input-gray: #f2efed;
   --text-dark: #4b3a3a;
+  --border-soft: rgba(106, 27, 44, 0.12);
 }
 
 * {
@@ -37,10 +86,10 @@ import logo from '@/assets/logo.png'
 body {
   margin: 0;
   min-height: 100vh;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: 'Avenir Next', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background:
-    radial-gradient(circle at top right, #f6ede7 0%, #f3e8df 58%),
-    radial-gradient(circle at bottom left, #f1e3d8 0%, #f3e8df 60%);
+    radial-gradient(circle at top right, #f8f2ec 0%, #f3e8df 58%),
+    linear-gradient(180deg, #fffdfb 0%, #f7f1ea 100%);
   color: var(--text-dark);
 }
 
@@ -55,67 +104,117 @@ body {
 }
 
 .site-header {
-  width: min(1080px, calc(100% - 2rem));
-  margin: 1.25rem auto 0;
-  border-radius: 18px;
-  background: #efe1d6;
-  border-bottom: 3px solid var(--primary-wine);
-  padding: 0.9rem 1.1rem;
+  width: min(1280px, calc(100% - 1rem));
+  margin: 0.65rem auto 0;
+  padding: 0.55rem 0.85rem 0.7rem;
   display: grid;
-  grid-template-columns: 190px 1fr 190px;
+  gap: 0.55rem;
+  background: rgba(255, 252, 248, 0.92);
+  border: 1px solid var(--border-soft);
+  border-radius: 20px;
+  box-shadow: 0 12px 34px rgba(106, 27, 44, 0.06);
+  backdrop-filter: blur(10px);
+}
+
+.header-top {
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 1rem;
 }
 
 .brand-block {
-  height: 72px;
-  display: flex;
+  display: inline-flex;
   align-items: center;
+  text-decoration: none;
 }
 
 .brand-logo {
-  max-height: 100%;
+  max-height: 42px;
   max-width: 180px;
   object-fit: contain;
 }
 
-.brand-message {
-  margin: 0;
-  text-align: center;
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.icon-button {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: 1px solid var(--border-soft);
+  background: linear-gradient(180deg, #fff 0%, #f7f0ea 100%);
   color: var(--primary-wine);
-  font-weight: 700;
-  letter-spacing: 0.03em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.icon-button svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+.site-nav {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: clamp(0.65rem, 2.1vw, 2rem);
+  padding: 0.55rem 0 0.05rem;
+  border-top: 1px solid rgba(106, 27, 44, 0.06);
+}
+
+.nav-link {
+  color: #4d3d42;
+  text-decoration: none;
+  font-size: 0.86rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.2rem 0;
+  border-bottom: 1px solid transparent;
+}
+
+.nav-link:hover,
+.nav-link.router-link-active {
+  color: var(--primary-wine);
+  border-bottom-color: var(--gold-soft);
 }
 
 .content-area {
   flex: 1;
   display: flex;
   justify-content: center;
-  align-items: center;
-  padding: 2rem 1rem 2.4rem;
+  align-items: flex-start;
+  padding: 1.1rem 0.5rem 2rem;
 }
 
 @media (max-width: 700px) {
   .site-header {
     width: calc(100% - 1rem);
-    grid-template-columns: 110px 1fr 110px;
-    padding: 0.7rem 0.75rem;
-  }
-
-  .brand-block {
-    height: 58px;
+    padding: 0.5rem 0.65rem 0.7rem;
   }
 
   .brand-logo {
-    max-width: 104px;
+    max-width: 108px;
+    max-height: 34px;
   }
 
-  .brand-message {
-    font-size: 0.92rem;
+  .site-nav {
+    gap: 0.9rem;
+    overflow-x: auto;
+    justify-content: flex-start;
+    padding-bottom: 0.2rem;
   }
 
   .content-area {
-    padding: 1.4rem 0.7rem 1.8rem;
+    padding: 0.9rem 0.25rem 1.4rem;
     align-items: flex-start;
   }
 }
