@@ -36,7 +36,14 @@ async function enviarLogin() {
     sucesso.value = `Login realizado com sucesso para ${response.user?.nome || email.value}.`
     router.push(redirectPath.value)
   } catch (e) {
-    erro.value = e.message
+    const message = String(e?.message || '').toLowerCase()
+
+    if (e?.status === 401 || message.includes('bad credentials') || message.includes('credenciais') || message.includes('senha')) {
+      erro.value = 'Email ou senha incorreto, tente novamente.'
+      return
+    }
+
+    erro.value = e.message || 'Nao foi possivel realizar o login.'
   } finally {
     loading.value = false
   }
@@ -63,7 +70,7 @@ async function enviarLogin() {
     <p v-if="sucesso" class="feedback sucesso">{{ sucesso }}</p>
 
     <p class="switch-text">
-      Nao possui conta?
+      Não possui conta?
       <RouterLink to="/cadastro">Cadastre-se</RouterLink>
     </p>
   </section>

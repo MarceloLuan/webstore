@@ -34,10 +34,8 @@ onMounted(async () => {
       <div class="hero-copy">
         <p class="eyebrow">Novidades da semana</p>
         <h1>{{ authenticated ? `Olá, ${firstName}.` : 'Peças femininas para usar agora.' }}</h1>
-        <p class="lead">
-          {{ authenticated
-            ? 'Continue de onde parou, acompanhe seus dados e veja os lançamentos mais recentes da loja.'
-            : 'Veja os produtos disponíveis, escolha seu look favorito e entre quando quiser para salvar dados ou finalizar a compra.' }}
+        <p v-if="!authenticated" class="lead">
+          Veja os produtos disponíveis, escolha seu look favorito e entre quando quiser para salvar dados ou finalizar a compra.
         </p>
 
         <div class="hero-actions">
@@ -61,8 +59,6 @@ onMounted(async () => {
           <p class="panel-kicker">Lançamentos</p>
           <h2>Produtos em destaque</h2>
         </div>
-
-        <p class="section-note">Escolha entre as peças mais recentes e encontre opções para compor seu próximo look.</p>
       </div>
 
       <div class="product-grid">
@@ -78,11 +74,6 @@ onMounted(async () => {
       <article class="info-card">
         <span>Conta</span>
         <strong>{{ authenticated ? roleLabel : 'Entrar ou criar' }}</strong>
-      </article>
-
-      <article class="info-card">
-        <span>Compra</span>
-        <strong>{{ authenticated ? 'Mais rápida' : 'Disponível' }}</strong>
       </article>
 
       <article class="info-card">
@@ -156,9 +147,13 @@ h1 {
   padding-right: min(4vw, 1.6rem);
 }
 
-.hero-copy .eyebrow,
+.hero-copy .eyebrow {
+  color: rgba(238, 205, 127, 0.88);
+}
+
+.hero-copy h1,
 .hero-copy .lead {
-  color: rgba(255, 248, 241, 0.88);
+  color: #e2c06a;
 }
 
 .hero-actions {
@@ -186,6 +181,10 @@ h1 {
   background: transparent;
   color: #fff8f1;
   border-color: rgba(255, 248, 241, 0.45);
+}
+
+.hero-button-ghost:hover {
+  text-transform: uppercase;
 }
 
 .hero-accent {
@@ -274,7 +273,7 @@ h1 {
 
 .info-strip {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.9rem;
 }
 
@@ -309,10 +308,6 @@ h1 {
   .section-heading {
     align-items: start;
     flex-direction: column;
-  }
-
-  .section-note {
-    text-align: left;
   }
 }
 

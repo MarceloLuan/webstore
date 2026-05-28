@@ -17,7 +17,6 @@ const emit = defineEmits(['edit', 'delete'])
   <div v-if="products.length" class="product-list-shell" :class="{ admin: adminMode }">
     <article v-for="product in products" :key="product.id" class="product-item">
       <div class="product-card-header">
-        <small>{{ product.destaque }}</small>
         <span v-if="adminMode" class="id-pill">#{{ product.id }}</span>
       </div>
 
@@ -63,13 +62,6 @@ const emit = defineEmits(['edit', 'delete'])
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-}
-
-small {
-  color: #7e6470;
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-  font-size: 0.72rem;
 }
 
 h3,

@@ -4,7 +4,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
 
 async function apiRequest(endpoint, options = {}) {
   const headers = {
-    ...(options.headers || {}),
+    ...options.headers,
   }
 
   const authHeader = getAuthHeader()
@@ -30,7 +30,9 @@ async function apiRequest(endpoint, options = {}) {
 
   if (!response.ok) {
     const message = data?.message || 'Nao foi possivel concluir a requisicao.'
-    throw new Error(message)
+    const error = new Error(message)
+    error.status = response.status
+    throw error
   }
 
   return data

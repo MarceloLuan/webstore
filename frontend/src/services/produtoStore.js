@@ -122,7 +122,7 @@ async function createProduct(product) {
   const created = normalizeProduct(await criarProduto({
     nome: product.nome.trim(),
     preco: product.preco,
-    destaque: product.destaque.trim() || 'Destaque',
+    destaque: product.destaque?.trim() || 'Destaque',
     imagem: product.imagem?.trim() || '',
     descricao: product.descricao?.trim() || '',
     categoria: product.categoria,
@@ -144,7 +144,7 @@ async function updateProduct(id, product) {
   const updated = normalizeProduct(await atualizarProduto(id, {
     nome: product.nome.trim(),
     preco: product.preco,
-    destaque: product.destaque.trim() || 'Destaque',
+    destaque: product.destaque?.trim() || 'Destaque',
     imagem: product.imagem?.trim() || '',
     descricao: product.descricao?.trim() || '',
     categoria: product.categoria,

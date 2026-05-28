@@ -20,8 +20,6 @@ const form = ref({
   senha: '',
 })
 
-const roleLabel = computed(() => (user.value?.role === 'ADMIN' ? 'Administrador' : 'Cliente'))
-
 function isAuthError(message) {
   return Boolean(
     message &&
@@ -154,11 +152,6 @@ onMounted(() => {
           Atualize suas informações pessoais, ajuste a senha e, se quiser, inative a conta.
         </p>
       </div>
-
-      <div class="role-badge">
-        <span>{{ roleLabel }}</span>
-        <strong>{{ user?.role || 'CLIENTE' }}</strong>
-      </div>
     </div>
 
     <div v-if="loading" class="panel loading-panel">Carregando conta...</div>
@@ -206,10 +199,6 @@ onMounted(() => {
 
         <dl class="info-list">
           <div>
-            <dt>ID</dt>
-            <dd>{{ user?.id }}</dd>
-          </div>
-          <div>
             <dt>E-mail</dt>
             <dd>{{ user?.email }}</dd>
           </div>
@@ -226,13 +215,6 @@ onMounted(() => {
             <dd>{{ user?.role }}</dd>
           </div>
         </dl>
-
-        <div class="notice">
-          <strong>Importante</strong>
-          <p>
-            Inativar a conta não remove os dados do banco, apenas marca o usuário como inativo.
-          </p>
-        </div>
       </aside>
     </div>
   </section>

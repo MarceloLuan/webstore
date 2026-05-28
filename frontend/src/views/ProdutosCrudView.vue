@@ -20,7 +20,6 @@ const sizeOptions = ref([])
 const form = ref({
   nome: '',
   preco: '',
-  destaque: '',
   imagem: '',
   descricao: '',
   categoria: '',
@@ -43,7 +42,6 @@ function createInitialForm() {
   return {
     nome: '',
     preco: '',
-    destaque: '',
     imagem: '',
     descricao: '',
     categoria: '',
@@ -70,7 +68,6 @@ function fillForm(product) {
   form.value = {
     nome: product.nome,
     preco: String(product.preco).replace('.', ','),
-    destaque: product.destaque,
     imagem: product.imagem || '',
     descricao: product.descricao || '',
     categoria: product.categoria || '',
@@ -122,7 +119,7 @@ async function submitProduct() {
     const payload = {
       nome: form.value.nome,
       preco: form.value.preco,
-      destaque: form.value.destaque,
+      destaque: 'Destaque',
       imagem: form.value.imagem,
       descricao: form.value.descricao,
       categoria: form.value.categoria,
