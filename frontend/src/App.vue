@@ -51,13 +51,13 @@ onBeforeUnmount(() => {
       </div>
 
       <nav class="site-nav" aria-label="Categorias">
+        <RouterLink v-if="isAdmin" class="nav-link nav-admin-link" to="/produtos">Gerenciar produtos</RouterLink>
         <RouterLink class="nav-link" to="/home">Novidades</RouterLink>
         <RouterLink class="nav-link" to="/home">Blusas</RouterLink>
         <RouterLink class="nav-link" to="/home">Camisas</RouterLink>
         <RouterLink class="nav-link" to="/home">Camisetas</RouterLink>
         <RouterLink class="nav-link" to="/home">Calças</RouterLink>
         <RouterLink class="nav-link" to="/home">Acessórios</RouterLink>
-        <RouterLink v-if="isAdmin" class="nav-link nav-admin-link" to="/produtos">Gerenciar produtos</RouterLink>
       </nav>
     </header>
 

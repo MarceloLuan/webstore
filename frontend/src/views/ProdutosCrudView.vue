@@ -200,8 +200,7 @@ onMounted(async () => {
       <div>
         <p class="eyebrow">Admin</p>
         <h1>Painel de produtos</h1>
-        <p class="lead">Cadastre, edite e exclua produtos. Tudo que mudar aqui aparece na home do cliente.
-        </p>
+        <p class="lead">Cadastre, edite e exclua produtos.</p>
       </div>
 
       <div class="hero-actions">
@@ -238,25 +237,13 @@ onMounted(async () => {
         />
       </section>
 
-      <aside class="panel summary-panel">
-        <p class="panel-kicker">Resumo</p>
-        <h2>Produtos cadastrados</h2>
-        <p class="summary-text">
-          O cliente já enxerga automaticamente os produtos ativos na home.
-        </p>
-
-        <div class="summary-box">
-          <strong>{{ activeProducts.length }}</strong>
-          <span>produtos ativos</span>
-        </div>
-      </aside>
-
       <section class="panel full-span">
         <div class="panel-heading">
           <div>
             <p class="panel-kicker">Listagem</p>
             <h2>Gerenciar produtos existentes</h2>
           </div>
+          <span class="counter counter-compact">{{ activeProducts.length }} cadastrados</span>
         </div>
 
         <ProdutoList
@@ -328,7 +315,7 @@ h1 {
 
 .grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+  grid-template-columns: 1fr;
   gap: 1rem;
 }
 
@@ -353,7 +340,7 @@ h1 {
 }
 
 .counter,
-.summary-box strong {
+.counter-compact {
   color: #5c1a2a;
   font-weight: 700;
 }
@@ -404,28 +391,9 @@ h1 {
   color: #5c1a2a;
 }
 
-.summary-panel {
-  display: grid;
-  gap: 0.8rem;
-  align-content: start;
-}
-
-.summary-text {
-  color: #62525b;
-  line-height: 1.6;
-}
-
-.summary-box {
-  border-radius: 18px;
-  padding: 1rem;
-  background: #f9f3f0;
-  border: 1px solid rgba(106, 27, 44, 0.08);
-  display: grid;
-  gap: 0.2rem;
-}
-
-.summary-box strong {
-  font-size: 2rem;
+.counter-compact {
+  font-size: 0.84rem;
+  letter-spacing: 0.02em;
 }
 
 @media (max-width: 900px) {

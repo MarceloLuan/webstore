@@ -33,9 +33,9 @@ onMounted(async () => {
     <section class="hero-banner">
       <div class="hero-copy">
         <p class="eyebrow">Novidades da semana</p>
-        <h1>{{ authenticated ? `Olá, ${firstName}.` : 'Peças femininas para usar agora.' }}</h1>
+        <h1>{{ authenticated ? `Olá, ${firstName}.` : 'Versatilidade e liberdade para o seu estilo' }}</h1>
         <p v-if="!authenticated" class="lead">
-          Veja os produtos disponíveis, escolha seu look favorito e entre quando quiser para salvar dados ou finalizar a compra.
+          Veja os produtos disponíveis, escolha seu look favorito e entre quando quiser.
         </p>
 
         <div class="hero-actions">
@@ -75,11 +75,6 @@ onMounted(async () => {
         <span>Conta</span>
         <strong>{{ authenticated ? roleLabel : 'Entrar ou criar' }}</strong>
       </article>
-
-      <article class="info-card">
-        <span>Peças</span>
-        <strong>{{ activeProducts.length }} disponíveis</strong>
-      </article>
     </section>
   </section>
 </template>
@@ -110,18 +105,19 @@ p {
 
 h1 {
   color: #5b1a26;
-  font-size: clamp(2.3rem, 4.4vw, 4.35rem);
+  font-size: clamp(2rem, 3.9vw, 4rem);
   line-height: 1.05;
-  max-width: 12ch;
+  max-width: 14ch;
   font-family: 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
 }
 
 .lead {
   margin-top: 0.9rem;
-  max-width: 58ch;
+  max-width: 42ch;
   color: #65565a;
   font-size: 1rem;
   line-height: 1.7;
+  text-wrap: balance;
 }
 
 .hero-banner {
@@ -273,7 +269,7 @@ h1 {
 
 .info-strip {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 0.9rem;
 }
 
@@ -305,6 +301,10 @@ h1 {
     grid-template-columns: 1fr;
   }
 
+  .hero-copy {
+    padding-right: 0;
+  }
+
   .section-heading {
     align-items: start;
     flex-direction: column;
@@ -315,6 +315,12 @@ h1 {
   .hero-banner {
     padding: 1rem;
     border-radius: 22px;
+    min-height: auto;
+  }
+
+  .hero-copy h1,
+  .hero-copy .lead {
+    max-width: 100%;
   }
 
   .home-page {
