@@ -132,7 +132,7 @@ function handleSubmit() {
     <label for="preco">Preço</label>
     <input id="preco" v-model="form.preco" type="text" placeholder="129,90" />
 
-    <label for="imagem">Imagem (opcional)</label>
+    <label for="imagem">Imagem do produto</label>
     <input id="imagem" v-model="form.imagem" type="text" placeholder="https://..." />
 
     <label for="descricao">Descrição curta</label>

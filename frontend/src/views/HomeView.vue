@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
+import ProdutoImagem from '@/components/produtos/ProdutoImagem.vue'
 import { clearUser, getUser } from '@/services/auth'
 import { useProductStore } from '@/services/produtoStore'
 
@@ -63,6 +64,7 @@ onMounted(async () => {
 
       <div class="product-grid">
         <article v-for="product in activeProducts" :key="product.id" class="product-card">
+          <ProdutoImagem :src="product.imagem" :alt="product.nome" ratio="3 / 4" />
           <small>{{ product.destaque }}</small>
           <strong>{{ product.nome }}</strong>
           <span>R$ {{ Number(product.preco).toFixed(2).replace('.', ',') }}</span>
@@ -248,6 +250,10 @@ h1 {
   min-height: 132px;
 }
 
+.product-card :deep(.product-media) {
+  margin-bottom: 0.45rem;
+}
+
 .product-card small {
   color: #8f6a75;
   font-size: 0.72rem;
@@ -325,6 +331,10 @@ h1 {
 
   .home-page {
     width: calc(100% - 0.25rem);
+  }
+
+  .product-grid {
+    gap: 0.75rem;
   }
 }
 </style>

@@ -5,15 +5,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="3a81bb75-21f2-4639-ae39-d479e1287322" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/.gitignore" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/copilotDiffState.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/modules.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/webstore.iml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/webstore/backend/config/SecurityConfig.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/webstore/backend/config/SecurityConfig.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/App.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/App.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/views/HomeView.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/views/HomeView.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/views/ProdutosCrudView.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/views/ProdutosCrudView.vue" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -183,7 +176,7 @@
       <workItem from="1779983480603" duration="3074000" />
       <workItem from="1779996613800" duration="1734000" />
       <workItem from="1780237344686" duration="408000" />
-      <workItem from="1780238184639" duration="1931000" />
+      <workItem from="1780238184639" duration="5796000" />
     </task>
     <servers />
   </component>

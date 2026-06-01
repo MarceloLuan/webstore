@@ -1,4 +1,6 @@
 <script setup>
+import ProdutoImagem from '@/components/produtos/ProdutoImagem.vue'
+
 defineProps({
   products: {
     type: Array,
@@ -11,6 +13,14 @@ defineProps({
 })
 
 const emit = defineEmits(['edit', 'delete'])
+
+function getStockTotal(product) {
+  if (!Array.isArray(product?.tamanhos)) {
+    return 0
+  }
+
+  return product.tamanhos.reduce((total, item) => total + Number(item?.quantidade ?? 0), 0)
+}
 </script>
 
 <template>
@@ -20,9 +30,16 @@ const emit = defineEmits(['edit', 'delete'])
         <span v-if="adminMode" class="id-pill">#{{ product.id }}</span>
       </div>
 
+      <ProdutoImagem :src="product.imagem" :alt="product.nome" ratio="16 / 10" class="product-thumb" />
+
       <h3>{{ product.nome }}</h3>
       <p v-if="product.descricao">{{ product.descricao }}</p>
       <strong>R$ {{ Number(product.preco).toFixed(2).replace('.', ',') }}</strong>
+
+      <div v-if="adminMode" class="stock-row">
+        <span class="stock-label">Estoque total</span>
+        <strong class="stock-value">{{ getStockTotal(product) }}</strong>
+      </div>
 
       <div v-if="adminMode" class="actions-row">
         <button class="secondary-button" type="button" @click="emit('edit', product)">Editar</button>
@@ -80,6 +97,37 @@ p {
 
 strong {
   color: #3f383c;
+}
+
+.product-item :deep(.product-media) {
+  margin: 0.15rem 0 0.2rem;
+}
+
+.product-item :deep(.product-thumb) {
+  width: min(100%, 148px);
+  min-height: 120px;
+  justify-self: start;
+}
+
+.stock-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 14px;
+  background: #fff8f5;
+  border: 1px solid rgba(106, 27, 44, 0.08);
+}
+
+.stock-label {
+  color: #6b5b61;
+  font-size: 0.88rem;
+}
+
+.stock-value {
+  color: #5c1a2a;
+  font-size: 1rem;
 }
 
 .id-pill {
