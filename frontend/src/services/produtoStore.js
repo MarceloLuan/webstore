@@ -13,6 +13,7 @@ const STORAGE_KEY = 'webstore-products'
 const fallbackCategoryOptions = [
   'Vestido',
   'Blusa',
+  'Camisa',
   'Camiseta',
   'Cropped',
   'Calças',

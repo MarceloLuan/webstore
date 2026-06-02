@@ -25,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
@@ -70,8 +71,9 @@ class ProdutoIntegrationTests {
                 .getResponse()
                 .getContentAsString();
 
-        assertThat(responseBody).contains("Vestido Floral");
-        assertThat(responseBody).doesNotContain("Produto Inativo");
+        assertThat(responseBody)
+            .contains("Vestido Floral")
+            .doesNotContain("Produto Inativo");
     }
 
     @Test
@@ -103,10 +105,11 @@ class ProdutoIntegrationTests {
                 .getResponse()
                 .getContentAsString();
 
-        assertThat(listBody).contains("Saia Midi");
-    assertThat(listBody).contains("Saia");
-    assertThat(listBody).contains("P");
-    assertThat(listBody).contains("M");
+        assertThat(listBody)
+            .contains("Saia Midi")
+            .contains("Saia")
+            .contains("P")
+            .contains("M");
 
         Long produtoId = produtoRepository.findAll().stream()
                 .findFirst()
@@ -121,6 +124,38 @@ class ProdutoIntegrationTests {
     }
 
     @Test
+    void adminDeveAtualizarCategoriaDoProduto() throws Exception {
+        usuarioRepository.save(new Administrador("Admin Teste", "admin@test.com", "11999999999", passwordEncoder.encode("123456")));
+        String token = obterToken("admin@test.com", "123456");
+
+        Produto produto = produtoRepository.save(novoProduto("Camisa de Linho", "189.90", true));
+
+        String responseBody = mockMvc.perform(put("/api/admin/produtos/" + produto.getId())
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{" +
+                                "\"nome\":\"Camisa de Linho\"," +
+                                "\"preco\":\"189,90\"," +
+                                "\"destaque\":\"Destaque\"," +
+                                "\"imagem\":\"https://img.example/camisa.jpg\"," +
+                                "\"descricao\":\"Produto atualizado\"," +
+                                "\"categoria\":\"Camisa\"," +
+                                "\"tamanhos\":[{" +
+                                "\"tamanho\":\"P\"," +
+                                "\"quantidade\":4}]}"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        Produto atualizado = produtoRepository.findById(produto.getId()).orElseThrow();
+        assertThat(atualizado.getCategoria()).isEqualTo(Categoria.CAMISA);
+        assertThat(responseBody)
+            .contains("Camisa")
+            .contains("Produto atualizado");
+    }
+
+    @Test
     void deveExporOpcoesDeCategoriaETamanho() throws Exception {
         String responseBody = mockMvc.perform(get("/api/produtos/opcoes"))
                 .andExpect(status().isOk())
@@ -128,10 +163,11 @@ class ProdutoIntegrationTests {
                 .getResponse()
                 .getContentAsString();
 
-        assertThat(responseBody).contains("categorias");
-        assertThat(responseBody).contains("tamanhos");
-        assertThat(responseBody).contains("Vestido");
-        assertThat(responseBody).contains("Tamanho Único");
+        assertThat(responseBody)
+            .contains("categorias")
+            .contains("tamanhos")
+            .contains("Vestido")
+            .contains("Tamanho Único");
     }
 
     @Test

@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.JsonValue;
 public enum Categoria {
     VESTIDO("Vestido"),
     BLUSA("Blusa"),
+    CAMISA("Camisa"),
     CAMISETA("Camiseta"),
     CROPPED("Cropped"),
     CALCAS("Calças"),
