@@ -52,7 +52,7 @@ onMounted(async () => {
 
 <template>
   <section class="home-page">
-    <section class="hero-banner">
+    <section v-if="!searchTerm" class="hero-banner">
       <div class="hero-copy">
         <p class="eyebrow">Novidades da semana</p>
         <h1>{{ authenticated ? `Olá, ${firstName}.` : 'Versatilidade e liberdade para o seu estilo' }}</h1>
