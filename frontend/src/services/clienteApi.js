@@ -29,7 +29,7 @@ async function apiRequest(endpoint, options = {}) {
   }
 
   if (!response.ok) {
-    const message = data?.message || 'Nao foi possivel concluir a requisicao.'
+    const message = data?.detail || data?.message || data?.error || 'Não foi possível concluir a requisição.'
     const error = new Error(message)
     error.status = response.status
     throw error

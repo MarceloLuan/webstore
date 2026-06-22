@@ -1,10 +1,13 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { RouterView } from 'vue-router'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { RouterView, useRoute, useRouter } from 'vue-router'
 import logo from '@/assets/logo.png'
 import { getUser } from '@/services/auth'
 
+const route = useRoute()
+const router = useRouter()
 const user = ref(getUser())
+const searchTerm = ref('')
 let authSyncTimer = null
 
 function refreshAuthState() {
@@ -13,6 +16,24 @@ function refreshAuthState() {
 
 const isAdmin = computed(() => user.value?.role === 'ADMIN')
 const accountTarget = computed(() => (user.value ? '/minha-conta' : '/login'))
+
+watch(
+  () => route.query.busca,
+  (value) => {
+    searchTerm.value = typeof value === 'string' ? value : ''
+  },
+  { immediate: true },
+)
+
+function searchProducts() {
+  const query = searchTerm.value.trim()
+  router.replace({ name: 'home', query: query ? { busca: query } : {} })
+}
+
+function clearSearch() {
+  searchTerm.value = ''
+  searchProducts()
+}
 
 onMounted(() => {
   refreshAuthState()
@@ -34,6 +55,30 @@ onBeforeUnmount(() => {
         <RouterLink to="/home" class="brand-block" aria-label="Ir para a home">
           <img :src="logo" alt="Logo da WebStore" class="brand-logo" />
         </RouterLink>
+
+        <form class="header-search" role="search" @submit.prevent="searchProducts">
+          <label for="product-search" class="sr-only">Pesquisar produtos pelo nome</label>
+          <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m21 19.6-5.2-5.2a7.5 7.5 0 1 0-1.4 1.4l5.2 5.2L21 19.6ZM5 10a5 5 0 1 1 10 0 5 5 0 0 1-10 0Z" />
+          </svg>
+          <input
+            id="product-search"
+            v-model="searchTerm"
+            type="search"
+            placeholder="Pesquisar produto..."
+            autocomplete="off"
+            @input="searchProducts"
+          />
+          <button
+            v-if="searchTerm"
+            class="clear-search"
+            type="button"
+            aria-label="Limpar pesquisa"
+            @click="clearSearch"
+          >
+            ×
+          </button>
+        </form>
 
         <div class="header-actions">
           <RouterLink class="icon-button" :to="accountTarget" :aria-label="user ? 'Minha conta' : 'Entrar'">
@@ -117,7 +162,8 @@ body {
 }
 
 .header-top {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(220px, 560px) auto;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
@@ -135,10 +181,79 @@ body {
   object-fit: contain;
 }
 
+.header-search {
+  width: 100%;
+  min-width: 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.header-search input {
+  width: 100%;
+  min-width: 0;
+  height: 42px;
+  padding: 0.7rem 2.55rem;
+  border: 1px solid rgba(106, 27, 44, 0.16);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--text-dark);
+  font: inherit;
+}
+
+.header-search input:focus {
+  outline: 3px solid rgba(106, 27, 44, 0.12);
+  border-color: var(--primary-wine);
+}
+
+.header-search input::placeholder {
+  color: #8b7d80;
+}
+
+.search-icon {
+  position: absolute;
+  left: 0.9rem;
+  width: 18px;
+  height: 18px;
+  fill: var(--primary-wine);
+  pointer-events: none;
+}
+
+.clear-search {
+  position: absolute;
+  right: 0.55rem;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #765f65;
+  font-size: 1.35rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.clear-search:hover {
+  background: #f3ebe8;
+  color: var(--primary-wine);
+}
+
 .header-actions {
   display: flex;
   align-items: center;
   gap: 0.45rem;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .icon-button {
@@ -201,9 +316,23 @@ body {
     padding: 0.5rem 0.65rem 0.7rem;
   }
 
+  .header-top {
+    grid-template-columns: 1fr auto;
+    gap: 0.65rem;
+  }
+
   .brand-logo {
     max-width: 108px;
     max-height: 34px;
+  }
+
+  .header-search {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .header-search input {
+    height: 40px;
   }
 
   .site-nav {

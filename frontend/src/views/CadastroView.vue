@@ -80,30 +80,34 @@ async function enviarCadastro() {
     <h1>CRIAR CONTA</h1>
 
     <form @submit.prevent="enviarCadastro" class="auth-form">
-      <label for="nome">Nome completo</label>
-      <input id="nome" v-model="nome" type="text" placeholder="Seu nome completo" />
+      <p class="required-note"><span aria-hidden="true">*</span> Campos obrigatórios</p>
 
-      <label for="email">E-mail</label>
-      <input id="email" v-model="email" type="email" placeholder="seuemail@exemplo.com" />
+      <label for="nome">Nome completo <span class="required-mark" aria-hidden="true">*</span></label>
+      <input id="nome" v-model="nome" type="text" placeholder="Seu nome completo" required />
 
-      <label for="telefone">Telefone</label>
+      <label for="email">E-mail <span class="required-mark" aria-hidden="true">*</span></label>
+      <input id="email" v-model="email" type="email" placeholder="seuemail@exemplo.com" required />
+
+      <label for="telefone">Telefone <span class="required-mark" aria-hidden="true">*</span></label>
       <input
         id="telefone"
         v-model="telefone"
         type="tel"
         placeholder="(00) 00000-0000"
         @input="aoDigitarTelefone"
+        required
       />
 
-      <label for="senha">Senha</label>
-      <input id="senha" v-model="senha" type="password" placeholder="Crie uma senha" />
+      <label for="senha">Senha <span class="required-mark" aria-hidden="true">*</span></label>
+      <input id="senha" v-model="senha" type="password" placeholder="Crie uma senha" required />
 
-      <label for="confirmarSenha">Confirmar senha</label>
+      <label for="confirmarSenha">Confirmar senha <span class="required-mark" aria-hidden="true">*</span></label>
       <input
         id="confirmarSenha"
         v-model="confirmarSenha"
         type="password"
         placeholder="Repita sua senha"
+        required
       />
 
       <button type="submit" :disabled="loading">
@@ -147,6 +151,18 @@ h1 {
 label {
   font-size: 0.95rem;
   color: #4b3a3a;
+}
+
+.required-note {
+  margin: 0 0 0.2rem;
+  color: #6e6166;
+  font-size: 0.82rem;
+}
+
+.required-note span,
+.required-mark {
+  color: #a4232f;
+  font-weight: 700;
 }
 
 input {

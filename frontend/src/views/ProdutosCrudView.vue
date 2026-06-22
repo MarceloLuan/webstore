@@ -82,9 +82,26 @@ function fillForm(product) {
   editingProductId.value = product.id
 }
 
+function parsePrice(value) {
+  let normalized = value.toString().trim().replace(/\s/g, '').replace(/R\$/gi, '')
+
+  if (normalized.includes(',') && normalized.includes('.')) {
+    normalized = normalized.replace(/\./g, '').replace(',', '.')
+  } else {
+    normalized = normalized.replace(',', '.')
+  }
+
+  return Number(normalized)
+}
+
 function validateForm() {
   if (!form.value.nome.trim()) return 'Informe o nome do produto.'
   if (!form.value.preco.toString().trim()) return 'Informe o preço do produto.'
+
+  const price = parsePrice(form.value.preco)
+  if (!Number.isFinite(price)) return 'Informe um preço válido.'
+  if (price < 0) return 'O preço do produto não pode ser negativo.'
+
   if (!form.value.categoria.trim()) return 'Selecione uma categoria.'
   if (!Array.isArray(form.value.tamanhos) || !form.value.tamanhos.length) return 'Adicione pelo menos um tamanho.'
   if (form.value.tamanhos.some((item) => !item.tamanho?.trim())) return 'Selecione todos os tamanhos adicionados.'
@@ -219,10 +236,6 @@ onMounted(async () => {
           <span class="counter">{{ activeProducts.length }} ativos</span>
         </div>
 
-        <p v-if="feedbackMessage" class="feedback" :class="feedbackTone">
-          {{ feedbackMessage }}
-        </p>
-
         <ProdutoForm
           v-model="form"
           :loading="loading"
@@ -235,6 +248,16 @@ onMounted(async () => {
           @submit="submitProduct"
           @cancel="resetForm"
         />
+
+        <p
+          v-if="feedbackMessage"
+          class="feedback"
+          :class="feedbackTone"
+          role="alert"
+          aria-live="polite"
+        >
+          {{ feedbackMessage }}
+        </p>
       </section>
 
       <section class="panel full-span">
@@ -346,7 +369,7 @@ h1 {
 }
 
 .feedback {
-  margin: 0 0 0.9rem;
+  margin: 0.9rem 0 0;
   padding: 0.85rem 1rem;
   border-radius: 14px;
   border: 1px solid transparent;

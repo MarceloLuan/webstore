@@ -126,11 +126,13 @@ function handleSubmit() {
 
 <template>
   <form class="product-form" @submit.prevent="handleSubmit">
-    <label for="nome">Nome do produto</label>
-    <input id="nome" v-model="form.nome" type="text" placeholder="Ex.: Vestido Floral" />
+    <p class="required-note"><span aria-hidden="true">*</span> Campos obrigatórios</p>
 
-    <label for="preco">Preço</label>
-    <input id="preco" v-model="form.preco" type="text" placeholder="129,90" />
+    <label for="nome">Nome do produto <span class="required-mark" aria-hidden="true">*</span></label>
+    <input id="nome" v-model="form.nome" type="text" placeholder="Ex.: Vestido Floral" required />
+
+    <label for="preco">Preço <span class="required-mark" aria-hidden="true">*</span></label>
+    <input id="preco" v-model="form.preco" type="text" placeholder="129,90" required />
 
     <label for="imagem">Imagem do produto</label>
     <input id="imagem" v-model="form.imagem" type="text" placeholder="https://..." />
@@ -138,8 +140,8 @@ function handleSubmit() {
     <label for="descricao">Descrição curta</label>
     <textarea id="descricao" v-model="form.descricao" rows="4" placeholder="Uma descrição curta para a vitrine"></textarea>
 
-    <label for="categoria">Categoria</label>
-    <select id="categoria" v-model="form.categoria" :disabled="optionsLoading">
+    <label for="categoria">Categoria <span class="required-mark" aria-hidden="true">*</span></label>
+    <select id="categoria" v-model="form.categoria" :disabled="optionsLoading" required>
       <option value="">Selecione uma categoria</option>
       <option v-for="category in categoryOptions" :key="category" :value="category">{{ category }}</option>
     </select>
@@ -147,7 +149,7 @@ function handleSubmit() {
     <div class="sizes-section">
       <div class="sizes-header">
         <div>
-          <p class="sizes-title">Tamanhos</p>
+          <p class="sizes-title">Tamanhos <span class="required-mark" aria-hidden="true">*</span></p>
           <p class="sizes-help">Selecione uma ou mais combinações de tamanho e estoque.</p>
         </div>
         <button class="secondary-button" type="button" @click="addSizeRow">Adicionar tamanho</button>
@@ -155,13 +157,13 @@ function handleSubmit() {
 
       <div v-for="(sizeItem, index) in form.tamanhos" :key="sizeItem.rowId" class="size-row">
         <label :for="`tamanho-${index}`" class="sr-only">Tamanho {{ index + 1 }}</label>
-        <select :id="`tamanho-${index}`" v-model="sizeItem.tamanho" :disabled="optionsLoading">
+        <select :id="`tamanho-${index}`" v-model="sizeItem.tamanho" :disabled="optionsLoading" required>
           <option value="">Selecione o tamanho</option>
           <option v-for="size in sizeOptions" :key="size" :value="size">{{ size }}</option>
         </select>
 
         <label :for="`quantidade-${index}`" class="sr-only">Quantidade {{ index + 1 }}</label>
-        <input :id="`quantidade-${index}`" v-model="sizeItem.quantidade" type="number" min="0" step="1" placeholder="Qtd" />
+        <input :id="`quantidade-${index}`" v-model="sizeItem.quantidade" type="number" min="0" step="1" placeholder="Qtd" required />
 
         <button class="remove-button" type="button" @click="removeSizeRow(sizeItem.rowId)">Remover</button>
       </div>
@@ -185,6 +187,18 @@ function handleSubmit() {
 label {
   color: #5d4f54;
   font-size: 0.94rem;
+}
+
+.required-note {
+  margin: 0 0 0.2rem;
+  color: #6e6166;
+  font-size: 0.82rem;
+}
+
+.required-note span,
+.required-mark {
+  color: #a4232f;
+  font-weight: 700;
 }
 
 input,

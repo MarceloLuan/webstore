@@ -55,11 +55,13 @@ async function enviarLogin() {
     <h1>ACESSO A CONTA</h1>
 
     <form @submit.prevent="enviarLogin" class="auth-form">
-      <label for="email">E-mail</label>
-      <input id="email" v-model="email" type="email" placeholder="seuemail@exemplo.com" />
+      <p class="required-note"><span aria-hidden="true">*</span> Campos obrigatórios</p>
 
-      <label for="senha">Senha</label>
-      <input id="senha" v-model="senha" type="password" placeholder="Digite sua senha" />
+      <label for="email">E-mail <span class="required-mark" aria-hidden="true">*</span></label>
+      <input id="email" v-model="email" type="email" placeholder="seuemail@exemplo.com" required />
+
+      <label for="senha">Senha <span class="required-mark" aria-hidden="true">*</span></label>
+      <input id="senha" v-model="senha" type="password" placeholder="Digite sua senha" required />
 
       <button type="submit" :disabled="loading">
         {{ loading ? 'ENTRANDO...' : 'ENTRAR' }}
@@ -102,6 +104,18 @@ h1 {
 label {
   font-size: 0.95rem;
   color: #4b3a3a;
+}
+
+.required-note {
+  margin: 0 0 0.2rem;
+  color: #6e6166;
+  font-size: 0.82rem;
+}
+
+.required-note span,
+.required-mark {
+  color: #a4232f;
+  font-weight: 700;
 }
 
 input {

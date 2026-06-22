@@ -1,13 +1,34 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { RouterLink, useRouter } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import ProdutoImagem from '@/components/produtos/ProdutoImagem.vue'
 import { clearUser, getUser } from '@/services/auth'
 import { useProductStore } from '@/services/produtoStore'
 
 const router = useRouter()
+const route = useRoute()
 const user = ref(getUser())
 const { activeProducts, loadProducts } = useProductStore()
+
+const searchTerm = computed(() => (typeof route.query.busca === 'string' ? route.query.busca.trim() : ''))
+
+function normalizeSearchText(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase('pt-BR')
+    .trim()
+}
+
+const filteredProducts = computed(() => {
+  const search = normalizeSearchText(searchTerm.value)
+
+  if (!search) {
+    return activeProducts.value
+  }
+
+  return activeProducts.value.filter((product) => normalizeSearchText(product.nome).includes(search))
+})
 
 const authenticated = computed(() => Boolean(user.value))
 const role = computed(() => user.value?.role || 'VISITANTE')
@@ -57,18 +78,26 @@ onMounted(async () => {
     <section class="featured-section">
       <div class="section-heading">
         <div>
-          <p class="panel-kicker">Lançamentos</p>
-          <h2>Produtos em destaque</h2>
+          <p class="panel-kicker">{{ searchTerm ? 'Resultado da busca' : 'Lançamentos' }}</p>
+          <h2>{{ searchTerm ? `Produtos encontrados para “${searchTerm}”` : 'Produtos em destaque' }}</h2>
         </div>
+        <span v-if="searchTerm" class="result-count">
+          {{ filteredProducts.length }} {{ filteredProducts.length === 1 ? 'produto' : 'produtos' }}
+        </span>
       </div>
 
-      <div class="product-grid">
-        <article v-for="product in activeProducts" :key="product.id" class="product-card">
+      <div v-if="filteredProducts.length" class="product-grid">
+        <article v-for="product in filteredProducts" :key="product.id" class="product-card">
           <ProdutoImagem :src="product.imagem" :alt="product.nome" ratio="3 / 4" />
           <small>{{ product.destaque }}</small>
           <strong>{{ product.nome }}</strong>
           <span>R$ {{ Number(product.preco).toFixed(2).replace('.', ',') }}</span>
         </article>
+      </div>
+
+      <div v-else class="empty-search" role="status">
+        <strong>Nenhum produto encontrado.</strong>
+        <p>Tente pesquisar usando outro nome.</p>
       </div>
     </section>
 
@@ -234,10 +263,33 @@ h1 {
   text-align: right;
 }
 
+.result-count {
+  color: #6f5f63;
+  font-size: 0.9rem;
+}
+
 .product-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.9rem;
+}
+
+.empty-search {
+  padding: clamp(1.5rem, 4vw, 3rem);
+  border: 1px dashed rgba(106, 27, 44, 0.24);
+  border-radius: 18px;
+  background: #fffaf7;
+  text-align: center;
+}
+
+.empty-search strong {
+  color: #5b1a26;
+  font-size: 1.1rem;
+}
+
+.empty-search p {
+  margin-top: 0.35rem;
+  color: #6f5f63;
 }
 
 .product-card {
