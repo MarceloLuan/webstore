@@ -11,6 +11,9 @@ const user = ref(getUser())
 const { activeProducts, loadProducts } = useProductStore()
 
 const searchTerm = computed(() => (typeof route.query.busca === 'string' ? route.query.busca.trim() : ''))
+const selectedCategory = computed(() => (
+  typeof route.query.categoria === 'string' ? route.query.categoria.trim() : ''
+))
 
 function normalizeSearchText(value) {
   return String(value || '')
@@ -22,12 +25,30 @@ function normalizeSearchText(value) {
 
 const filteredProducts = computed(() => {
   const search = normalizeSearchText(searchTerm.value)
+  const category = normalizeSearchText(selectedCategory.value)
 
-  if (!search) {
-    return activeProducts.value
+  return activeProducts.value.filter((product) => {
+    const matchesSearch = !search || normalizeSearchText(product.nome).includes(search)
+    const matchesCategory = !category || normalizeSearchText(product.categoria) === category
+    return matchesSearch && matchesCategory
+  })
+})
+
+const hasActiveFilter = computed(() => Boolean(searchTerm.value || selectedCategory.value))
+const resultTitle = computed(() => {
+  if (searchTerm.value && selectedCategory.value) {
+    return `${selectedCategory.value}: resultados para “${searchTerm.value}”`
   }
 
-  return activeProducts.value.filter((product) => normalizeSearchText(product.nome).includes(search))
+  if (searchTerm.value) {
+    return `Produtos encontrados para “${searchTerm.value}”`
+  }
+
+  if (selectedCategory.value) {
+    return selectedCategory.value
+  }
+
+  return 'Produtos em destaque'
 })
 
 const authenticated = computed(() => Boolean(user.value))
@@ -52,7 +73,7 @@ onMounted(async () => {
 
 <template>
   <section class="home-page">
-    <section v-if="!searchTerm" class="hero-banner">
+    <section v-if="!hasActiveFilter" class="hero-banner">
       <div class="hero-copy">
         <p class="eyebrow">Novidades da semana</p>
         <h1>{{ authenticated ? `Olá, ${firstName}.` : 'Versatilidade e liberdade para o seu estilo' }}</h1>
@@ -78,10 +99,10 @@ onMounted(async () => {
     <section class="featured-section">
       <div class="section-heading">
         <div>
-          <p class="panel-kicker">{{ searchTerm ? 'Resultado da busca' : 'Lançamentos' }}</p>
-          <h2>{{ searchTerm ? `Produtos encontrados para “${searchTerm}”` : 'Produtos em destaque' }}</h2>
+          <p class="panel-kicker">{{ hasActiveFilter ? 'Produtos filtrados' : 'Lançamentos' }}</p>
+          <h2>{{ resultTitle }}</h2>
         </div>
-        <span v-if="searchTerm" class="result-count">
+        <span v-if="hasActiveFilter" class="result-count">
           {{ filteredProducts.length }} {{ filteredProducts.length === 1 ? 'produto' : 'produtos' }}
         </span>
       </div>
@@ -97,7 +118,7 @@ onMounted(async () => {
 
       <div v-else class="empty-search" role="status">
         <strong>Nenhum produto encontrado.</strong>
-        <p>Tente pesquisar usando outro nome.</p>
+        <p>Tente outra pesquisa ou escolha uma categoria diferente.</p>
       </div>
     </section>
 

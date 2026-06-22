@@ -172,7 +172,11 @@ public class ProdutoService {
         }
 
         try {
-            return new BigDecimal(normalized);
+            BigDecimal preco = new BigDecimal(normalized);
+            if (preco.signum() < 0) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O preço não pode ser negativo.");
+            }
+            return preco;
         } catch (NumberFormatException ex) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Preço inválido.");
         }

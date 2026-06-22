@@ -189,6 +189,48 @@ class ProdutoIntegrationTests {
                 .andExpect(status().isBadRequest());
     }
 
+    @Test
+    void cadastroComPrecoNegativoDeveFalhar() throws Exception {
+        usuarioRepository.save(new Administrador("Admin Teste", "admin@test.com", "11999999999", passwordEncoder.encode("123456")));
+        String token = obterToken("admin@test.com", "123456");
+
+        mockMvc.perform(post("/api/admin/produtos")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{" +
+                                "\"nome\":\"Produto com preço inválido\"," +
+                                "\"preco\":\"-10,00\"," +
+                                "\"categoria\":\"Vestido\"," +
+                                "\"tamanhos\":[{" +
+                                "\"tamanho\":\"P\"," +
+                                "\"quantidade\":1}]}"))
+                .andExpect(status().isBadRequest());
+
+        assertThat(produtoRepository.count()).isZero();
+    }
+
+    @Test
+    void atualizacaoComPrecoNegativoDeveFalharEPreservarPrecoAnterior() throws Exception {
+        usuarioRepository.save(new Administrador("Admin Teste", "admin@test.com", "11999999999", passwordEncoder.encode("123456")));
+        String token = obterToken("admin@test.com", "123456");
+        Produto produto = produtoRepository.save(novoProduto("Vestido", "99.90", true));
+
+        mockMvc.perform(put("/api/admin/produtos/" + produto.getId())
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{" +
+                                "\"nome\":\"Vestido\"," +
+                                "\"preco\":\"-1,00\"," +
+                                "\"categoria\":\"Vestido\"," +
+                                "\"tamanhos\":[{" +
+                                "\"tamanho\":\"P\"," +
+                                "\"quantidade\":1}]}"))
+                .andExpect(status().isBadRequest());
+
+        Produto naoAtualizado = produtoRepository.findById(produto.getId()).orElseThrow();
+        assertThat(naoAtualizado.getPreco()).isEqualByComparingTo("99.90");
+    }
+
     private Produto novoProduto(String nome, String preco, boolean ativo) {
         Produto produto = new Produto();
         produto.setNome(nome);

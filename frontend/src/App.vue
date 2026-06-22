@@ -16,6 +16,17 @@ function refreshAuthState() {
 
 const isAdmin = computed(() => user.value?.role === 'ADMIN')
 const accountTarget = computed(() => (user.value ? '/minha-conta' : '/login'))
+const selectedCategory = computed(() => (typeof route.query.categoria === 'string' ? route.query.categoria : ''))
+
+const categoryLinks = [
+  { label: 'Vestidos', value: 'Vestido' },
+  { label: 'Blusas', value: 'Blusa' },
+  { label: 'Camisas', value: 'Camisa' },
+  { label: 'Calças', value: 'Calças' },
+  { label: 'Saias', value: 'Saia' },
+  { label: 'Conjuntos', value: 'Conjunto' },
+  { label: 'Acessórios', value: 'Acessório' },
+]
 
 watch(
   () => route.query.busca,
@@ -27,7 +38,17 @@ watch(
 
 function searchProducts() {
   const query = searchTerm.value.trim()
-  router.replace({ name: 'home', query: query ? { busca: query } : {} })
+  const nextQuery = {}
+
+  if (query) {
+    nextQuery.busca = query
+  }
+
+  if (selectedCategory.value) {
+    nextQuery.categoria = selectedCategory.value
+  }
+
+  router.replace({ name: 'home', query: nextQuery })
 }
 
 function clearSearch() {
@@ -97,12 +118,22 @@ onBeforeUnmount(() => {
 
       <nav class="site-nav" aria-label="Categorias">
         <RouterLink v-if="isAdmin" class="nav-link nav-admin-link" to="/produtos">Gerenciar produtos</RouterLink>
-        <RouterLink class="nav-link" to="/home">Novidades</RouterLink>
-        <RouterLink class="nav-link" to="/home">Blusas</RouterLink>
-        <RouterLink class="nav-link" to="/home">Camisas</RouterLink>
-        <RouterLink class="nav-link" to="/home">Camisetas</RouterLink>
-        <RouterLink class="nav-link" to="/home">Calças</RouterLink>
-        <RouterLink class="nav-link" to="/home">Acessórios</RouterLink>
+        <RouterLink
+          class="nav-link"
+          :class="{ 'nav-link-selected': route.name === 'home' && !selectedCategory }"
+          :to="{ name: 'home' }"
+        >
+          Início
+        </RouterLink>
+        <RouterLink
+          v-for="category in categoryLinks"
+          :key="category.value"
+          class="nav-link"
+          :class="{ 'nav-link-selected': selectedCategory === category.value }"
+          :to="{ name: 'home', query: { categoria: category.value } }"
+        >
+          {{ category.label }}
+        </RouterLink>
       </nav>
     </header>
 
@@ -297,7 +328,8 @@ body {
 }
 
 .nav-link:hover,
-.nav-link.router-link-active {
+.nav-admin-link.router-link-active,
+.nav-link-selected {
   color: var(--primary-wine);
   border-bottom-color: var(--gold-soft);
 }
