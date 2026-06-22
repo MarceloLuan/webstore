@@ -108,12 +108,19 @@ onMounted(async () => {
       </div>
 
       <div v-if="filteredProducts.length" class="product-grid">
-        <article v-for="product in filteredProducts" :key="product.id" class="product-card">
+        <RouterLink
+          v-for="product in filteredProducts"
+          :key="product.id"
+          class="product-card"
+          :to="{ name: 'produto-detalhes', params: { id: product.id } }"
+          :aria-label="`Ver detalhes de ${product.nome}`"
+        >
           <ProdutoImagem :src="product.imagem" :alt="product.nome" ratio="3 / 4" />
           <small>{{ product.destaque }}</small>
           <strong>{{ product.nome }}</strong>
           <span>R$ {{ Number(product.preco).toFixed(2).replace('.', ',') }}</span>
-        </article>
+          <span class="view-product">Ver produto</span>
+        </RouterLink>
       </div>
 
       <div v-else class="empty-search" role="status">
@@ -321,6 +328,21 @@ h1 {
   display: grid;
   gap: 0.28rem;
   min-height: 132px;
+  color: inherit;
+  text-decoration: none;
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.product-card:hover,
+.product-card:focus-visible {
+  transform: translateY(-3px);
+  border-color: rgba(106, 27, 44, 0.2);
+  box-shadow: 0 14px 28px rgba(106, 27, 44, 0.1);
+}
+
+.product-card:focus-visible {
+  outline: 3px solid rgba(106, 27, 44, 0.18);
+  outline-offset: 2px;
 }
 
 .product-card :deep(.product-media) {
@@ -344,6 +366,13 @@ h1 {
   color: #5b1a26;
   font-size: 1.18rem;
   font-weight: 700;
+}
+
+.product-card .view-product {
+  margin-top: 0.35rem;
+  color: #8c6a4d;
+  font-size: 0.82rem;
+  font-weight: 600;
 }
 
 .info-strip {

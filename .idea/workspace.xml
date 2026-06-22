@@ -6,9 +6,7 @@
   <component name="ChangeListManager">
     <list default="true" id="3a81bb75-21f2-4639-ae39-d479e1287322" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/webstore/backend/service/ProdutoService.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/webstore/backend/service/ProdutoService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/test/java/com/webstore/backend/ProdutoIntegrationTests.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/test/java/com/webstore/backend/ProdutoIntegrationTests.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/App.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/App.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/router/index.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/router/index.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/views/HomeView.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/views/HomeView.vue" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -187,7 +185,7 @@
       <workItem from="1780961790871" duration="977000" />
       <workItem from="1781645866269" duration="2139000" />
       <workItem from="1781799823822" duration="1690000" />
-      <workItem from="1782165789726" duration="3210000" />
+      <workItem from="1782165789726" duration="4340000" />
     </task>
     <servers />
   </component>

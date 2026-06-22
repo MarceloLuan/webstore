@@ -4,6 +4,7 @@ import CadastroView from '@/views/CadastroView.vue'
 import HomeView from '@/views/HomeView.vue'
 import MinhaContaView from '@/views/MinhaContaView.vue'
 import ProdutosCrudView from '@/views/ProdutosCrudView.vue'
+import ProdutoDetalhesView from '@/views/ProdutoDetalhesView.vue'
 import { getUser, isAuthenticated } from '@/services/auth'
 
 const router = createRouter({
@@ -44,6 +45,11 @@ const router = createRouter({
         requiresAuth: true,
         roles: ['ADMIN'],
       },
+    },
+    {
+      path: '/produtos/:id',
+      name: 'produto-detalhes',
+      component: ProdutoDetalhesView,
     },
   ],
 })
