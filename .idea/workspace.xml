@@ -6,6 +6,9 @@
   <component name="ChangeListManager">
     <list default="true" id="3a81bb75-21f2-4639-ae39-d479e1287322" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/webstore/backend/config/AdminDataSeeder.java" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/views/HomeView.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/views/HomeView.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/views/ProdutosCrudView.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/views/ProdutosCrudView.vue" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -187,7 +190,7 @@
       <workItem from="1782165789726" duration="5087000" />
       <workItem from="1782415362263" duration="709000" />
       <workItem from="1782424552016" duration="6000" />
-      <workItem from="1782697201643" duration="3504000" />
+      <workItem from="1782697201643" duration="5279000" />
     </task>
     <servers />
   </component>

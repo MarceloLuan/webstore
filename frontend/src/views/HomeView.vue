@@ -132,7 +132,7 @@ onMounted(async () => {
     <section class="info-strip">
       <article class="info-card">
         <span>Loja física</span>
-        <strong>Rua Professor João Cândido, 156.</strong>
+        <strong>Avenida São Paulo, 147 - A.</strong>
       </article>
     </section>
   </section>
