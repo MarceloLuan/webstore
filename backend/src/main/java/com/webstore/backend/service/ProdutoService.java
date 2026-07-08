@@ -45,6 +45,7 @@ public class ProdutoService {
         validarRequest(request);
 
         Produto produto = new Produto();
+        validarCodigoUnico(request.getCodigo(), null);
         aplicarRequest(produto, request);
         return produtoRepository.save(produto);
     }
@@ -53,6 +54,7 @@ public class ProdutoService {
         validarRequest(request);
 
         Produto produto = buscarPorId(id);
+        validarCodigoUnico(request.getCodigo(), produto.getId());
         aplicarRequest(produto, request);
         return produtoRepository.save(produto);
     }
@@ -63,6 +65,7 @@ public class ProdutoService {
     }
 
     private void aplicarRequest(Produto produto, ProdutoRequest request) {
+        produto.setCodigo(normalizarCodigo(request.getCodigo()));
         produto.setNome(normalizarTexto(request.getNome()));
         produto.setPreco(normalizarPreco(request.getPreco()));
         produto.setDestaque(StringUtils.hasText(request.getDestaque()) ? request.getDestaque().trim() : "Destaque");
@@ -113,6 +116,9 @@ public class ProdutoService {
         if (!StringUtils.hasText(request.getNome())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Nome é obrigatório.");
         }
+        if (!StringUtils.hasText(request.getCodigo())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Codigo do produto e obrigatorio.");
+        }
         if (!StringUtils.hasText(request.getPreco())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Preço é obrigatório.");
         }
@@ -160,6 +166,20 @@ public class ProdutoService {
 
     private String normalizarTexto(String value) {
         return value == null ? null : value.trim();
+    }
+
+    private String normalizarCodigo(String value) {
+        return value == null ? null : value.trim().toUpperCase();
+    }
+
+    private void validarCodigoUnico(String value, Long produtoIdAtual) {
+        String codigo = normalizarCodigo(value);
+
+        produtoRepository.findByCodigo(codigo)
+                .filter(produto -> produtoIdAtual == null || !produto.getId().equals(produtoIdAtual))
+                .ifPresent(produto -> {
+                    throw new ResponseStatusException(HttpStatus.CONFLICT, "Ja existe um produto cadastrado com este codigo.");
+                });
     }
 
     private BigDecimal normalizarPreco(String value) {

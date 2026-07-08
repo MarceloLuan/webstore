@@ -85,6 +85,7 @@ class ProdutoIntegrationTests {
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{" +
+                                "\"codigo\":\"SAIA-001\"," +
                                 "\"nome\":\"Saia Midi\"," +
                                 "\"preco\":\"109,90\"," +
                                 "\"destaque\":\"Favorito\"," +
@@ -106,6 +107,7 @@ class ProdutoIntegrationTests {
                 .getContentAsString();
 
         assertThat(listBody)
+            .contains("SAIA-001")
             .contains("Saia Midi")
             .contains("Saia")
             .contains("P")
@@ -134,6 +136,7 @@ class ProdutoIntegrationTests {
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{" +
+                                "\"codigo\":\"CAMISA-001\"," +
                                 "\"nome\":\"Camisa de Linho\"," +
                                 "\"preco\":\"189,90\"," +
                                 "\"destaque\":\"Destaque\"," +
@@ -171,6 +174,35 @@ class ProdutoIntegrationTests {
     }
 
     @Test
+    void cadastroComCodigoDuplicadoDeveFalhar() throws Exception {
+        usuarioRepository.save(new Administrador("Admin Teste", "admin@test.com", "11999999999", passwordEncoder.encode("123456")));
+        String token = obterToken("admin@test.com", "123456");
+
+        String payload = "{" +
+                "\"codigo\":\"DUP-001\"," +
+                "\"nome\":\"Produto Duplicado\"," +
+                "\"preco\":\"109,90\"," +
+                "\"categoria\":\"Vestido\"," +
+                "\"tamanhos\":[{" +
+                "\"tamanho\":\"P\"," +
+                "\"quantidade\":1}]}";
+
+        mockMvc.perform(post("/api/admin/produtos")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/admin/produtos")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isConflict());
+
+        assertThat(produtoRepository.count()).isEqualTo(1);
+    }
+
+    @Test
     void cadastroComCategoriaInvalidaDeveFalhar() throws Exception {
         usuarioRepository.save(new Administrador("Admin Teste", "admin@test.com", "11999999999", passwordEncoder.encode("123456")));
         String token = obterToken("admin@test.com", "123456");
@@ -179,6 +211,7 @@ class ProdutoIntegrationTests {
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{" +
+                                "\"codigo\":\"PROD-X\"," +
                                 "\"nome\":\"Produto X\"," +
                                 "\"preco\":\"109,90\"," +
                                 "\"destaque\":\"Favorito\"," +
@@ -198,6 +231,7 @@ class ProdutoIntegrationTests {
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{" +
+                                "\"codigo\":\"PRECO-NEG\"," +
                                 "\"nome\":\"Produto com preço inválido\"," +
                                 "\"preco\":\"-10,00\"," +
                                 "\"categoria\":\"Vestido\"," +
@@ -219,6 +253,7 @@ class ProdutoIntegrationTests {
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{" +
+                                "\"codigo\":\"VEST-001\"," +
                                 "\"nome\":\"Vestido\"," +
                                 "\"preco\":\"-1,00\"," +
                                 "\"categoria\":\"Vestido\"," +
@@ -233,6 +268,7 @@ class ProdutoIntegrationTests {
 
     private Produto novoProduto(String nome, String preco, boolean ativo) {
         Produto produto = new Produto();
+        produto.setCodigo(nome.toUpperCase().replace(" ", "-"));
         produto.setNome(nome);
         produto.setPreco(new BigDecimal(preco));
         produto.setDestaque("Destaque");

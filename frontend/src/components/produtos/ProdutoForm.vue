@@ -6,6 +6,7 @@ const props = defineProps({
     type: Object,
     default: () => ({
       nome: '',
+      codigo: '',
       preco: '',
       imagem: '',
       descricao: '',
@@ -58,6 +59,7 @@ function normalizeSizeRows(value) {
 function normalizeForm(value) {
   return {
     nome: value?.nome ?? '',
+    codigo: value?.codigo ?? '',
     preco: value?.preco ?? '',
     imagem: value?.imagem ?? '',
     descricao: value?.descricao ?? '',
@@ -74,6 +76,7 @@ function isSameSizeRow(left, right) {
 
 function isSameForm(left, right) {
   return left.nome === right.nome
+    && left.codigo === right.codigo
     && left.preco === right.preco
     && left.imagem === right.imagem
     && left.descricao === right.descricao
@@ -130,6 +133,9 @@ function handleSubmit() {
 
     <label for="nome">Nome do produto <span class="required-mark" aria-hidden="true">*</span></label>
     <input id="nome" v-model="form.nome" type="text" placeholder="Ex.: Vestido Floral" required />
+
+    <label for="codigo">Codigo do produto <span class="required-mark" aria-hidden="true">*</span></label>
+    <input id="codigo" v-model="form.codigo" type="text" placeholder="Ex.: MB000" required />
 
     <label for="preco">Preço <span class="required-mark" aria-hidden="true">*</span></label>
     <input id="preco" v-model="form.preco" type="text" placeholder="129,90" required />

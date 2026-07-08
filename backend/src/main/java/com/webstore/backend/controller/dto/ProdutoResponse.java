@@ -7,6 +7,7 @@ import java.math.BigDecimal;
 public class ProdutoResponse {
 
     private Long id;
+    private String codigo;
     private String nome;
     private BigDecimal preco;
     private String destaque;
@@ -19,8 +20,9 @@ public class ProdutoResponse {
     public ProdutoResponse() {
     }
 
-    public ProdutoResponse(Long id, String nome, BigDecimal preco, String destaque, String imagem, String descricao, Boolean ativo) {
+    public ProdutoResponse(Long id, String codigo, String nome, BigDecimal preco, String destaque, String imagem, String descricao, Boolean ativo) {
         this.id = id;
+        this.codigo = codigo;
         this.nome = nome;
         this.preco = preco;
         this.destaque = destaque;
@@ -32,6 +34,7 @@ public class ProdutoResponse {
     public static ProdutoResponse from(Produto produto) {
         ProdutoResponse resp = new ProdutoResponse(
                 produto.getId(),
+                produto.getCodigo(),
                 produto.getNome(),
                 produto.getPreco(),
                 produto.getDestaque(),
@@ -60,6 +63,14 @@ public class ProdutoResponse {
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public String getCodigo() {
+        return codigo;
+    }
+
+    public void setCodigo(String codigo) {
+        this.codigo = codigo;
     }
 
     public String getNome() {

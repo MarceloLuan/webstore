@@ -30,15 +30,16 @@ const fallbackCategoryOptions = [
 const fallbackSizeOptions = ['36', '38', '40', '42', '44', 'P', 'M', 'G', 'GG', 'G1', 'G2', 'Tamanho Único']
 
 const seedProducts = [
-  { id: 1, nome: 'Vestido Floral', preco: 129.9, destaque: 'Mais vendido', ativo: true },
-  { id: 2, nome: 'Blusa de Seda', preco: 89.9, destaque: 'Novo', ativo: true },
-  { id: 3, nome: 'Saia Midi', preco: 109.9, destaque: 'Favorito', ativo: true },
+  { id: 1, codigo: 'PROD-1', nome: 'Vestido Floral', preco: 129.9, destaque: 'Mais vendido', ativo: true },
+  { id: 2, codigo: 'PROD-2', nome: 'Blusa de Seda', preco: 89.9, destaque: 'Novo', ativo: true },
+  { id: 3, codigo: 'PROD-3', nome: 'Saia Midi', preco: 109.9, destaque: 'Favorito', ativo: true },
 ]
 
 function normalizeProduct(product) {
   return {
     ...product,
     id: Number(product.id),
+    codigo: product.codigo || `PROD-${product.id}`,
     nome: product.nome ?? '',
     preco: Number(product.preco ?? 0),
     destaque: product.destaque || 'Destaque',
@@ -122,6 +123,7 @@ function listProducts() {
 async function createProduct(product) {
   const created = normalizeProduct(await criarProduto({
     nome: product.nome.trim(),
+    codigo: product.codigo.trim(),
     preco: product.preco,
     destaque: product.destaque?.trim() || 'Destaque',
     imagem: product.imagem?.trim() || '',
@@ -144,6 +146,7 @@ async function createProduct(product) {
 async function updateProduct(id, product) {
   const updated = normalizeProduct(await atualizarProduto(id, {
     nome: product.nome.trim(),
+    codigo: product.codigo.trim(),
     preco: product.preco,
     destaque: product.destaque?.trim() || 'Destaque',
     imagem: product.imagem?.trim() || '',

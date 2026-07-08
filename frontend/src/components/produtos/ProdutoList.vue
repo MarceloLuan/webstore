@@ -31,7 +31,7 @@ function getStockTotal(product) {
   <div v-if="products.length" class="product-list-shell" :class="{ admin: adminMode }">
     <article v-for="product in products" :key="product.id" class="product-item">
       <div class="product-card-header">
-        <span v-if="adminMode" class="id-pill">#{{ product.id }}</span>
+        <span v-if="adminMode" class="id-pill">{{ product.codigo || `#${product.id}` }}</span>
       </div>
 
       <ProdutoImagem :src="product.imagem" :alt="product.nome" ratio="16 / 10" class="product-thumb" />

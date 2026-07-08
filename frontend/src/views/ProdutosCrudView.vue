@@ -20,6 +20,7 @@ const sizeOptions = ref([])
 const searchTerm = ref('')
 const form = ref({
   nome: '',
+  codigo: '',
   preco: '',
   imagem: '',
   descricao: '',
@@ -42,6 +43,7 @@ function createEmptySizeRow() {
 function createInitialForm() {
   return {
     nome: '',
+    codigo: '',
     preco: '',
     imagem: '',
     descricao: '',
@@ -63,7 +65,9 @@ const filteredProducts = computed(() => {
     return activeProducts.value
   }
 
-  return activeProducts.value.filter((product) => product.nome.toLowerCase().includes(term))
+  return activeProducts.value.filter((product) =>
+    product.nome.toLowerCase().includes(term) || product.codigo?.toLowerCase().includes(term),
+  )
 })
 
 function resetForm({ clearFeedback = true } = {}) {
@@ -77,6 +81,7 @@ function resetForm({ clearFeedback = true } = {}) {
 function fillForm(product) {
   form.value = {
     nome: product.nome,
+    codigo: product.codigo || '',
     preco: String(product.preco).replace('.', ','),
     imagem: product.imagem || '',
     descricao: product.descricao || '',
@@ -106,6 +111,7 @@ function parsePrice(value) {
 
 function validateForm() {
   if (!form.value.nome.trim()) return 'Informe o nome do produto.'
+  if (!form.value.codigo.trim()) return 'Informe o codigo do produto.'
   if (!form.value.preco.toString().trim()) return 'Informe o preço do produto.'
 
   const price = parsePrice(form.value.preco)
@@ -145,6 +151,7 @@ async function submitProduct() {
   try {
     const payload = {
       nome: form.value.nome,
+      codigo: form.value.codigo,
       preco: form.value.preco,
       destaque: 'Destaque',
       imagem: form.value.imagem,
