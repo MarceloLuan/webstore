@@ -49,6 +49,7 @@ public class ContaService {
         usuario.setTelefone(request.getTelefone().trim());
 
         if (StringUtils.hasText(request.getSenha())) {
+            validarTrocaSenha(request, usuario);
             usuario.setSenha(passwordEncoder.encode(request.getSenha()));
         }
 
@@ -104,5 +105,20 @@ public class ContaService {
 
     private String normalizarEmail(String email) {
         return email.trim().toLowerCase();
+    }
+
+    private void validarTrocaSenha(AtualizarContaRequest request, Usuario usuario) {
+        if (!StringUtils.hasText(request.getSenhaAtual())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe sua senha atual para trocar a senha.");
+        }
+        if (!passwordEncoder.matches(request.getSenhaAtual(), usuario.getSenha())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Senha atual incorreta.");
+        }
+        if (!StringUtils.hasText(request.getConfirmacaoSenha())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Confirme a nova senha.");
+        }
+        if (!request.getSenha().equals(request.getConfirmacaoSenha())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A nova senha e a confirmacao precisam ser iguais.");
+        }
     }
 }

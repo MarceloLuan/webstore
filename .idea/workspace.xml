@@ -6,8 +6,18 @@
   <component name="ChangeListManager">
     <list default="true" id="3a81bb75-21f2-4639-ae39-d479e1287322" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/webstore/backend/config/AdminDataSeeder.java" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/views/HomeView.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/views/HomeView.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/webstore/backend/controller/ClienteController.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/webstore/backend/controller/ClienteController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/webstore/backend/controller/dto/AtualizarContaRequest.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/webstore/backend/controller/dto/AtualizarContaRequest.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/webstore/backend/controller/dto/ClienteCadastroRequest.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/webstore/backend/controller/dto/ClienteCadastroRequest.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/webstore/backend/service/ClienteService.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/webstore/backend/service/ClienteService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/webstore/backend/service/ContaService.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/webstore/backend/service/ContaService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/public/favicon.ico" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/components/produtos/ProdutoImagem.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/components/produtos/ProdutoImagem.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/components/produtos/ProdutoList.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/components/produtos/ProdutoList.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/services/clienteApi.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/services/clienteApi.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/views/CadastroView.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/views/CadastroView.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/views/MinhaContaView.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/views/MinhaContaView.vue" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/views/ProdutosCrudView.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/views/ProdutosCrudView.vue" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -190,7 +200,10 @@
       <workItem from="1782165789726" duration="5087000" />
       <workItem from="1782415362263" duration="709000" />
       <workItem from="1782424552016" duration="6000" />
-      <workItem from="1782697201643" duration="5279000" />
+      <workItem from="1782697201643" duration="6066000" />
+      <workItem from="1782833249134" duration="11000" />
+      <workItem from="1782856383076" duration="3181000" />
+      <workItem from="1783470692505" duration="1531000" />
     </task>
     <servers />
   </component>

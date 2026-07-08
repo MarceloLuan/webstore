@@ -46,7 +46,7 @@ async function enviarCadastro() {
   }
 
   if (senha.value !== confirmarSenha.value) {
-    erro.value = 'As senhas nao conferem.'
+    erro.value = 'As senhas precisam ser iguais.'
     return
   }
 
@@ -58,6 +58,7 @@ async function enviarCadastro() {
       email: email.value,
       telefone: telefone.value,
       senha: senha.value,
+      confirmacaoSenha: confirmarSenha.value,
     })
 
     sucesso.value = 'Cadastro realizado com sucesso. Redirecionando para login...'

@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
+import placeholderImage from '@/assets/images/default.jpg'
 
 const props = defineProps({
   src: {
@@ -20,9 +21,6 @@ const hasError = ref(false)
 
 const hasImage = computed(() => Boolean(props.src && props.src.trim()))
 const showPlaceholder = computed(() => !hasImage.value || hasError.value)
-
-const placeholderSvg =
-  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 1000'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop stop-color='%23f7ede7'/%3E%3Cstop offset='1' stop-color='%23f0ddd5'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='800' height='1000' rx='48' fill='url(%23g)'/%3E%3Ccircle cx='400' cy='380' r='122' fill='%23ffffff' fill-opacity='.58'/%3E%3Cpath d='M252 690l111-150 94 108 65-74 126 116H252z' fill='%23ffffff' fill-opacity='.72'/%3E%3Ccircle cx='330' cy='332' r='28' fill='%23d5b1a4' fill-opacity='.75'/%3E%3C/svg%3E"
 
 function handleError() {
   hasError.value = true
@@ -49,7 +47,7 @@ watch(
     />
 
     <div v-else class="product-placeholder" aria-hidden="true">
-      <img class="placeholder-image" :src="placeholderSvg" alt="" />
+      <img class="placeholder-image" :src="placeholderImage" alt="" />
       <span>Sem imagem</span>
     </div>
   </div>
@@ -71,6 +69,10 @@ watch(
   height: 100%;
   display: block;
   object-fit: cover;
+}
+
+.placeholder-image {
+  object-fit: contain;
 }
 
 .product-placeholder {

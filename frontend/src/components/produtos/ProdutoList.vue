@@ -10,6 +10,10 @@ defineProps({
     type: Boolean,
     default: false,
   },
+  emptyMessage: {
+    type: String,
+    default: 'Nenhum produto cadastrado ainda.',
+  },
 })
 
 const emit = defineEmits(['edit', 'delete'])
@@ -48,7 +52,7 @@ function getStockTotal(product) {
     </article>
   </div>
 
-  <p v-else class="empty-state">Nenhum produto cadastrado ainda.</p>
+  <p v-else class="empty-state">{{ emptyMessage }}</p>
 </template>
 
 <style scoped>

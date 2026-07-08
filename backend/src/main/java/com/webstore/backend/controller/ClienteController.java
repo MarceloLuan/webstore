@@ -47,7 +47,7 @@ public class ClienteController {
         cliente.setTelefone(request.getTelefone());
         cliente.setSenha(request.getSenha());
 
-        Cliente clienteSalvo = clienteService.cadastrar(cliente);
+        Cliente clienteSalvo = clienteService.cadastrar(cliente, request.getConfirmacaoSenha());
         return ResponseEntity.status(HttpStatus.CREATED).body(ClienteResponse.from(clienteSalvo));
     }
 

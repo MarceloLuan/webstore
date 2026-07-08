@@ -24,8 +24,8 @@ public class ClienteService {
         this.passwordEncoder = passwordEncoder;
     }
 
-    public Cliente cadastrar(Cliente cliente) {
-        validarClienteParaCadastro(cliente);
+    public Cliente cadastrar(Cliente cliente, String confirmacaoSenha) {
+        validarClienteParaCadastro(cliente, confirmacaoSenha);
 
         String emailNormalizado = normalizarEmail(cliente.getEmail());
         if (usuarioRepository.existsByEmail(emailNormalizado)) {
@@ -40,7 +40,7 @@ public class ClienteService {
         return clienteRepository.save(cliente);
     }
 
-    private void validarClienteParaCadastro(Cliente cliente) {
+    private void validarClienteParaCadastro(Cliente cliente, String confirmacaoSenha) {
         if (cliente == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Dados do cliente são obrigatórios.");
         }
@@ -55,6 +55,12 @@ public class ClienteService {
         }
         if (!StringUtils.hasText(cliente.getSenha())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Senha é obrigatória.");
+        }
+        if (!StringUtils.hasText(confirmacaoSenha)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Confirme a senha.");
+        }
+        if (!cliente.getSenha().equals(confirmacaoSenha)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "As senhas precisam ser iguais.");
         }
     }
 

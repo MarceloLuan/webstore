@@ -17,6 +17,7 @@ const feedbackMessage = ref('')
 const feedbackTone = ref('')
 const categoryOptions = ref([])
 const sizeOptions = ref([])
+const searchTerm = ref('')
 const form = ref({
   nome: '',
   preco: '',
@@ -55,6 +56,15 @@ function setFeedback(message, tone = 'info') {
 }
 
 const isEditing = computed(() => editingProductId.value !== null)
+const filteredProducts = computed(() => {
+  const term = searchTerm.value.trim().toLowerCase()
+
+  if (!term) {
+    return activeProducts.value
+  }
+
+  return activeProducts.value.filter((product) => product.nome.toLowerCase().includes(term))
+})
 
 function resetForm({ clearFeedback = true } = {}) {
   form.value = createInitialForm()
@@ -266,12 +276,25 @@ onMounted(async () => {
             <p class="panel-kicker">Listagem</p>
             <h2>Gerenciar produtos existentes</h2>
           </div>
-          <span class="counter counter-compact">{{ activeProducts.length }} cadastrados</span>
+          <span class="counter counter-compact">
+            {{ filteredProducts.length }} de {{ activeProducts.length }} cadastrados
+          </span>
         </div>
 
+        <label class="search-field" for="product-search">
+          <span>Pesquisar por nome</span>
+          <input
+            id="product-search"
+            v-model="searchTerm"
+            type="search"
+            placeholder="Ex.: vestido, blusa, saia..."
+          />
+        </label>
+
         <ProdutoList
-          :products="activeProducts"
+          :products="filteredProducts"
           :admin-mode="true"
+          :empty-message="searchTerm ? 'Nenhum produto encontrado com esse nome.' : 'Nenhum produto cadastrado ainda.'"
           @edit="handleEdit"
           @delete="handleDelete"
         />
@@ -417,6 +440,29 @@ h1 {
 .counter-compact {
   font-size: 0.84rem;
   letter-spacing: 0.02em;
+}
+
+.search-field {
+  display: grid;
+  gap: 0.45rem;
+  margin-bottom: 1rem;
+  color: #5d4f54;
+  font-size: 0.94rem;
+}
+
+.search-field input {
+  width: 100%;
+  border: 1px solid #eadfdb;
+  border-radius: 12px;
+  padding: 0.8rem 0.95rem;
+  background: #fdfafa;
+  color: #3f383c;
+  font-size: 0.96rem;
+}
+
+.search-field input:focus {
+  outline: 2px solid rgba(106, 27, 44, 0.18);
+  border-color: #6a1b2c;
 }
 
 @media (max-width: 900px) {

@@ -6,6 +6,7 @@ public class ClienteCadastroRequest {
     private String email;
     private String telefone;
     private String senha;
+    private String confirmacaoSenha;
 
     public ClienteCadastroRequest() {
     }
@@ -40,6 +41,14 @@ public class ClienteCadastroRequest {
 
     public void setSenha(String senha) {
         this.senha = senha;
+    }
+
+    public String getConfirmacaoSenha() {
+        return confirmacaoSenha;
+    }
+
+    public void setConfirmacaoSenha(String confirmacaoSenha) {
+        this.confirmacaoSenha = confirmacaoSenha;
     }
 }
 

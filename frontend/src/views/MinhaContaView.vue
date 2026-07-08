@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { atualizarMinhaConta, buscarMinhaConta, deletarMinhaConta } from '@/services/clienteApi'
 import { clearUser, getUser, setUser } from '@/services/auth'
@@ -11,13 +11,16 @@ const loading = ref(true)
 const saving = ref(false)
 const deleting = ref(false)
 const erro = ref('')
+const erroSenha = ref('')
 const sucesso = ref('')
 
 const form = ref({
   nome: '',
   email: '',
   telefone: '',
+  senhaAtual: '',
   senha: '',
+  confirmacaoSenha: '',
 })
 
 function isAuthError(message) {
@@ -32,8 +35,21 @@ function sincronizarForm(conta) {
     nome: conta.nome || '',
     email: conta.email || '',
     telefone: conta.telefone || '',
+    senhaAtual: '',
     senha: '',
+    confirmacaoSenha: '',
   }
+}
+
+function limparCamposSenha() {
+  form.value.senhaAtual = ''
+  form.value.senha = ''
+  form.value.confirmacaoSenha = ''
+}
+
+function exibirErroSenha(message) {
+  erro.value = message
+  erroSenha.value = message
 }
 
 async function carregarConta() {
@@ -60,6 +76,7 @@ async function carregarConta() {
 
 async function salvarConta() {
   erro.value = ''
+  erroSenha.value = ''
   sucesso.value = ''
 
   if (!form.value.nome || !form.value.email || !form.value.telefone) {
@@ -67,22 +84,47 @@ async function salvarConta() {
     return
   }
 
+  const querTrocarSenha = Boolean(
+    form.value.senhaAtual || form.value.senha || form.value.confirmacaoSenha,
+  )
+
+  if (querTrocarSenha) {
+    if (!form.value.senhaAtual) {
+      exibirErroSenha('Para trocar a senha, informe sua senha atual.')
+      return
+    }
+    if (!form.value.senha) {
+      exibirErroSenha('Digite a nova senha.')
+      return
+    }
+    if (!form.value.confirmacaoSenha) {
+      exibirErroSenha('Digite a nova senha novamente para confirmar.')
+      return
+    }
+    if (form.value.senha !== form.value.confirmacaoSenha) {
+      exibirErroSenha('As duas senhas novas precisam ser iguais.')
+      return
+    }
+  }
+
   saving.value = true
 
   try {
     const oldEmail = user.value?.email || ''
-    const changedPassword = Boolean(form.value.senha)
+    const changedPassword = querTrocarSenha
 
     const contaAtualizada = await atualizarMinhaConta({
       nome: form.value.nome,
       email: form.value.email,
       telefone: form.value.telefone,
+      senhaAtual: form.value.senhaAtual,
       senha: form.value.senha,
+      confirmacaoSenha: form.value.confirmacaoSenha,
     })
 
     user.value = contaAtualizada
     setUser(contaAtualizada)
-    form.value.senha = ''
+    limparCamposSenha()
 
     if (changedPassword || oldEmail !== contaAtualizada.email) {
       clearUser()
@@ -95,6 +137,11 @@ async function salvarConta() {
     if (isAuthError(error.message)) {
       clearUser()
       await router.replace('/login')
+      return
+    }
+
+    if (querTrocarSenha) {
+      exibirErroSenha(error.message)
       return
     }
 
@@ -176,8 +223,43 @@ onMounted(() => {
           <label for="telefone">Telefone</label>
           <input id="telefone" v-model="form.telefone" type="text" placeholder="(00) 00000-0000" />
 
-          <label for="senha">Nova senha</label>
-          <input id="senha" v-model="form.senha" type="password" placeholder="Deixe vazio para manter" />
+          <div class="password-section">
+            <div>
+              <p class="password-title">Trocar senha</p>
+              <p class="password-hint">Opcional. Preencha estes campos somente se quiser alterar sua senha.</p>
+            </div>
+
+            <label for="senha-atual">Senha atual</label>
+            <input
+              id="senha-atual"
+              v-model="form.senhaAtual"
+              type="password"
+              autocomplete="current-password"
+              placeholder="Confirme sua senha atual"
+            />
+
+            <label for="senha">Nova senha</label>
+            <input
+              id="senha"
+              v-model="form.senha"
+              type="password"
+              autocomplete="new-password"
+              placeholder="Digite a nova senha"
+            />
+
+            <label for="confirmacao-senha">Confirmar nova senha</label>
+            <input
+              id="confirmacao-senha"
+              v-model="form.confirmacaoSenha"
+              type="password"
+              autocomplete="new-password"
+              placeholder="Digite a nova senha novamente"
+            />
+
+            <p v-if="erroSenha" class="password-error" role="alert" aria-live="polite">
+              {{ erroSenha }}
+            </p>
+          </div>
 
           <div class="form-actions">
             <button class="primary-button" type="submit" :disabled="saving">
@@ -205,14 +287,6 @@ onMounted(() => {
           <div>
             <dt>Telefone</dt>
             <dd>{{ user?.telefone || '-' }}</dd>
-          </div>
-          <div>
-            <dt>Status</dt>
-            <dd>{{ user?.ativo ? 'Ativa' : 'Inativa' }}</dd>
-          </div>
-          <div>
-            <dt>Perfil</dt>
-            <dd>{{ user?.role }}</dd>
           </div>
         </dl>
       </aside>
@@ -332,6 +406,38 @@ input {
 input:focus {
   outline: 2px solid rgba(106, 27, 44, 0.18);
   border-color: #6a1b2c;
+}
+
+.password-section {
+  display: grid;
+  gap: 0.7rem;
+  margin-top: 0.25rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid rgba(106, 27, 44, 0.1);
+}
+
+.password-title {
+  margin: 0;
+  color: #5c1a2a;
+  font-weight: 700;
+}
+
+.password-hint {
+  margin: 0.25rem 0 0;
+  color: #6b5b61;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.password-error {
+  margin: 0;
+  padding: 0.75rem 0.85rem;
+  border-radius: 12px;
+  background: #fdf0ee;
+  color: #8a1d1d;
+  border: 1px solid rgba(138, 29, 29, 0.16);
+  font-size: 0.92rem;
+  line-height: 1.45;
 }
 
 .form-actions {

@@ -29,7 +29,12 @@ async function apiRequest(endpoint, options = {}) {
   }
 
   if (!response.ok) {
-    const message = data?.detail || data?.message || data?.error || 'Não foi possível concluir a requisição.'
+    const message =
+      data?.message ||
+      data?.detail ||
+      data?.title ||
+      data?.error ||
+      'Não foi possível concluir a requisição.'
     const error = new Error(message)
     error.status = response.status
     throw error
@@ -53,19 +58,21 @@ export function loginCliente({ email, senha }) {
   return apiPost('/login', { email, senha }, { skipAuth: true })
 }
 
-export function cadastrarCliente({ nome, email, telefone, senha }) {
-  return apiPost('/clientes', { nome, email, telefone, senha }, { skipAuth: true })
+export function cadastrarCliente({ nome, email, telefone, senha, confirmacaoSenha }) {
+  return apiPost('/clientes', { nome, email, telefone, senha, confirmacaoSenha }, { skipAuth: true })
 }
 
 export function buscarMinhaConta() {
   return apiRequest('/minha-conta')
 }
 
-export function atualizarMinhaConta({ nome, email, telefone, senha }) {
+export function atualizarMinhaConta({ nome, email, telefone, senhaAtual, senha, confirmacaoSenha }) {
   const payload = { nome, email, telefone }
 
   if (senha) {
+    payload.senhaAtual = senhaAtual
     payload.senha = senha
+    payload.confirmacaoSenha = confirmacaoSenha
   }
 
   return apiRequest('/minha-conta', {
