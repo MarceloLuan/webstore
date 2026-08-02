@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue'
 import {
   criarProduto,
+  buscarProduto,
   excluirProduto,
   listarProdutos,
   listarProdutoOpcoes,
@@ -49,8 +50,10 @@ function normalizeProduct(product) {
     categoria: product.categoria || '',
     tamanhos: Array.isArray(product.tamanhos)
       ? product.tamanhos.map((item) => ({
+          id: Number(item?.id),
           tamanho: item?.tamanho || '',
           quantidade: Number(item?.quantidade ?? 0),
+          preco: item?.preco == null ? null : Number(item.preco),
         }))
       : [],
   }
@@ -97,6 +100,16 @@ async function loadProducts({ adminMode = false } = {}) {
     products.value = fallback
     return products.value
   }
+}
+
+async function loadProductById(id) {
+  const normalized = normalizeProduct(await buscarProduto(id))
+  const exists = products.value.some((product) => product.id === normalized.id)
+  products.value = exists
+    ? products.value.map((product) => (product.id === normalized.id ? normalized : product))
+    : [normalized, ...products.value]
+  persistProducts(products.value)
+  return normalized
 }
 
 async function loadProductOptions() {
@@ -182,6 +195,7 @@ export function useProductStore() {
     products,
     activeProducts,
     loadProducts,
+    loadProductById,
     loadProductOptions,
     listProducts,
     createProduct,

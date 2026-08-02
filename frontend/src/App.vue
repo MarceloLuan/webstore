@@ -2,21 +2,32 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterView, useRoute, useRouter } from 'vue-router'
 import logo from '@/assets/logo.png'
-import { getUser } from '@/services/auth'
+import { useProductStore } from '@/services/produtoStore'
+import { useAuthStore } from '@/stores/authStore'
+import { useCartStore } from '@/stores/cartStore'
 
 const route = useRoute()
 const router = useRouter()
-const user = ref(getUser())
 const searchTerm = ref('')
-let authSyncTimer = null
+const filterOpen = ref(false)
+const filterPanel = ref(null)
+const categoryOptions = ref([])
+const sizeOptions = ref([])
+const { loadProductOptions } = useProductStore()
+const { user, isAdmin } = useAuthStore()
+const { itemCount, loadCart, resetCart } = useCartStore()
 
-function refreshAuthState() {
-  user.value = getUser()
-}
-
-const isAdmin = computed(() => user.value?.role === 'ADMIN')
 const accountTarget = computed(() => (user.value ? '/minha-conta' : '/login'))
+const isClient = computed(() => user.value?.role === 'CLIENTE')
+const cartTarget = computed(() => (
+  isClient.value
+    ? { name: 'carrinho' }
+    : { name: 'login', query: { redirect: '/carrinho' } }
+))
 const selectedCategory = computed(() => (typeof route.query.categoria === 'string' ? route.query.categoria : ''))
+const selectedSize = computed(() => (typeof route.query.tamanho === 'string' ? route.query.tamanho : ''))
+const selectedOrder = computed(() => (typeof route.query.ordenar === 'string' ? route.query.ordenar : 'relevancia'))
+const activeFilterCount = computed(() => Number(Boolean(selectedCategory.value)) + Number(Boolean(selectedSize.value)) + Number(selectedOrder.value !== 'relevancia'))
 
 const categoryLinks = [
   { label: 'Vestidos', value: 'Vestido' },
@@ -36,16 +47,31 @@ watch(
   { immediate: true },
 )
 
+watch(
+  () => user.value?.id,
+  async () => {
+    if (!isClient.value) {
+      resetCart()
+      return
+    }
+
+    try {
+      await loadCart({ force: true })
+    } catch {
+      // A tela do carrinho oferece a tentativa novamente.
+    }
+  },
+  { immediate: true },
+)
+
 function searchProducts() {
   const query = searchTerm.value.trim()
-  const nextQuery = {}
+  const nextQuery = { ...route.query }
 
   if (query) {
     nextQuery.busca = query
-  }
-
-  if (selectedCategory.value) {
-    nextQuery.categoria = selectedCategory.value
+  } else {
+    delete nextQuery.busca
   }
 
   router.replace({ name: 'home', query: nextQuery })
@@ -56,16 +82,48 @@ function clearSearch() {
   searchProducts()
 }
 
-onMounted(() => {
-  refreshAuthState()
-  authSyncTimer = setInterval(refreshAuthState, 500)
+function updateFilter(key, value) {
+  const nextQuery = { ...route.query }
+
+  if (value && value !== 'relevancia') {
+    nextQuery[key] = value
+  } else {
+    delete nextQuery[key]
+  }
+
+  router.replace({ name: 'home', query: nextQuery })
+}
+
+function clearFilters() {
+  const nextQuery = { ...route.query }
+  delete nextQuery.categoria
+  delete nextQuery.tamanho
+  delete nextQuery.ordenar
+  router.replace({ name: 'home', query: nextQuery })
+}
+
+function closeFiltersOnOutsideClick(event) {
+  if (filterOpen.value && filterPanel.value && !filterPanel.value.contains(event.target)) {
+    filterOpen.value = false
+  }
+}
+
+function closeFiltersOnEscape(event) {
+  if (event.key === 'Escape') filterOpen.value = false
+}
+
+onMounted(async () => {
+  document.addEventListener('click', closeFiltersOnOutsideClick)
+  document.addEventListener('keydown', closeFiltersOnEscape)
+
+  const options = await loadProductOptions()
+  categoryOptions.value = options.categorias
+  sizeOptions.value = options.tamanhos
 })
 
 onBeforeUnmount(() => {
-  if (authSyncTimer) {
-    clearInterval(authSyncTimer)
-    authSyncTimer = null
-  }
+  document.removeEventListener('click', closeFiltersOnOutsideClick)
+  document.removeEventListener('keydown', closeFiltersOnEscape)
 })
 </script>
 
@@ -77,7 +135,8 @@ onBeforeUnmount(() => {
           <img :src="logo" alt="Logo da WebStore" class="brand-logo" />
         </RouterLink>
 
-        <form class="header-search" role="search" @submit.prevent="searchProducts">
+        <div class="search-tools">
+          <form class="header-search" role="search" @submit.prevent="searchProducts">
           <label for="product-search" class="sr-only">Pesquisar produtos pelo nome</label>
           <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
             <path d="m21 19.6-5.2-5.2a7.5 7.5 0 1 0-1.4 1.4l5.2 5.2L21 19.6ZM5 10a5 5 0 1 1 10 0 5 5 0 0 1-10 0Z" />
@@ -99,7 +158,65 @@ onBeforeUnmount(() => {
           >
             ×
           </button>
-        </form>
+          </form>
+
+          <div ref="filterPanel" class="filter-shell">
+            <button
+              class="filter-button"
+              :class="{ active: filterOpen || activeFilterCount }"
+              type="button"
+              :aria-expanded="filterOpen"
+              aria-controls="product-filters"
+              @click="filterOpen = !filterOpen"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 7h10a2.5 2.5 0 0 0 4.9 0H20a1 1 0 1 0 0-2h-1.1A2.5 2.5 0 0 0 14 5H4a1 1 0 0 0 0 2Zm16 10H10a2.5 2.5 0 0 0-4.9 0H4a1 1 0 1 0 0 2h1.1a2.5 2.5 0 0 0 4.9 0h10a1 1 0 1 0 0-2Zm0-6h-3.1a2.5 2.5 0 0 0-4.8 0H4a1 1 0 1 0 0 2h8.1a2.5 2.5 0 0 0 4.8 0H20a1 1 0 1 0 0-2Z" />
+              </svg>
+              <span>Filtrar</span>
+              <span v-if="activeFilterCount" class="filter-count">{{ activeFilterCount }}</span>
+            </button>
+
+            <div v-if="filterOpen" id="product-filters" class="filter-popover">
+              <div class="filter-heading">
+                <div>
+                  <small>Explore do seu jeito</small>
+                  <strong>Filtrar produtos</strong>
+                </div>
+                <button type="button" aria-label="Fechar filtros" @click="filterOpen = false">×</button>
+              </div>
+
+              <label class="filter-field">
+                <span>Categoria</span>
+                <select :value="selectedCategory" @change="updateFilter('categoria', $event.target.value)">
+                  <option value="">Todas as categorias</option>
+                  <option v-for="category in categoryOptions" :key="category" :value="category">{{ category }}</option>
+                </select>
+              </label>
+
+              <label class="filter-field">
+                <span>Tamanho disponível</span>
+                <select :value="selectedSize" @change="updateFilter('tamanho', $event.target.value)">
+                  <option value="">Todos os tamanhos</option>
+                  <option v-for="size in sizeOptions" :key="size" :value="size">{{ size }}</option>
+                </select>
+              </label>
+
+              <label class="filter-field">
+                <span>Ordenar por</span>
+                <select :value="selectedOrder" @change="updateFilter('ordenar', $event.target.value)">
+                  <option value="relevancia">Relevância</option>
+                  <option value="menor-preco">Menor preço</option>
+                  <option value="maior-preco">Maior preço</option>
+                  <option value="nome">Nome (A–Z)</option>
+                </select>
+              </label>
+
+              <button class="clear-filters-button" type="button" :disabled="!activeFilterCount" @click="clearFilters">
+                Limpar filtros
+              </button>
+            </div>
+          </div>
+        </div>
 
         <div class="header-actions">
           <RouterLink class="icon-button" :to="accountTarget" :aria-label="user ? 'Minha conta' : 'Entrar'">
@@ -108,11 +225,12 @@ onBeforeUnmount(() => {
             </svg>
           </RouterLink>
 
-          <button class="icon-button" type="button" aria-label="Carrinho em breve">
+          <RouterLink class="icon-button cart-button" :to="cartTarget" aria-label="Abrir carrinho">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M7 4h-2l-1 2v2h2l3.6 7.59-1.35 2.41A2 2 0 0 0 10 21h9v-2h-8.42a.25.25 0 0 1-.21-.38L11 16h6.55a2 2 0 0 0 1.8-1.11L22 8H8.42L7.8 6.5h11.9V4H7Zm2 16a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm8 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z" />
             </svg>
-          </button>
+            <span v-if="isClient && itemCount" class="cart-count">{{ itemCount > 99 ? '99+' : itemCount }}</span>
+          </RouterLink>
         </div>
       </div>
 
@@ -220,6 +338,154 @@ body {
   align-items: center;
 }
 
+.search-tools {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.filter-shell {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.filter-button {
+  height: 42px;
+  padding: 0 0.85rem;
+  border: 1px solid rgba(106, 27, 44, 0.16);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--primary-wine);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.filter-button:hover,
+.filter-button.active {
+  background: #f7efea;
+  border-color: rgba(106, 27, 44, 0.35);
+}
+
+.filter-button svg {
+  width: 17px;
+  height: 17px;
+  fill: currentColor;
+}
+
+.filter-count {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: var(--primary-wine);
+  color: #fff;
+  display: inline-grid;
+  place-items: center;
+  font-size: 0.72rem;
+}
+
+.filter-popover {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 0.6rem);
+  right: 0;
+  width: min(340px, calc(100vw - 2rem));
+  padding: 1rem;
+  border: 1px solid rgba(106, 27, 44, 0.14);
+  border-radius: 18px;
+  background: #fffdfb;
+  box-shadow: 0 18px 45px rgba(74, 31, 39, 0.18);
+  display: grid;
+  gap: 0.85rem;
+}
+
+.filter-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+}
+
+.filter-heading div {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.filter-heading small {
+  color: #8c6a4d;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.filter-heading strong {
+  color: var(--primary-wine);
+  font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, Georgia, serif;
+  font-size: 1.35rem;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+}
+
+.filter-heading button {
+  border: 0;
+  background: transparent;
+  color: #765f65;
+  font-size: 1.35rem;
+  cursor: pointer;
+}
+
+.filter-field {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.filter-field span {
+  color: #5f4c51;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.filter-field select {
+  width: 100%;
+  height: 42px;
+  padding: 0 0.75rem;
+  border: 1px solid rgba(106, 27, 44, 0.14);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--text-dark);
+  font: inherit;
+}
+
+.filter-field select:focus {
+  outline: 3px solid rgba(106, 27, 44, 0.1);
+  border-color: var(--primary-wine);
+}
+
+.clear-filters-button {
+  min-height: 40px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--primary-wine);
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.clear-filters-button:disabled {
+  background: #e8dfdc;
+  color: #998d90;
+  cursor: default;
+}
+
 .header-search input {
   width: 100%;
   min-width: 0;
@@ -308,6 +574,27 @@ body {
   fill: currentColor;
 }
 
+.cart-button {
+  position: relative;
+}
+
+.cart-count {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 0.3rem;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  background: var(--primary-wine);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 0.65rem;
+  font-weight: 800;
+}
+
 .site-nav {
   display: flex;
   justify-content: center;
@@ -358,13 +645,30 @@ body {
     max-height: 34px;
   }
 
-  .header-search {
+  .search-tools {
     grid-column: 1 / -1;
     grid-row: 2;
   }
 
   .header-search input {
     height: 40px;
+  }
+
+  .filter-button {
+    width: 42px;
+    height: 40px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .filter-button > span:not(.filter-count) {
+    display: none;
+  }
+
+  .filter-count {
+    position: absolute;
+    top: -5px;
+    right: -5px;
   }
 
   .site-nav {

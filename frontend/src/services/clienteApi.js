@@ -94,6 +94,10 @@ export function listarProdutos() {
   return apiRequest('/produtos')
 }
 
+export function buscarProduto(id) {
+  return apiRequest(`/produtos/${id}`)
+}
+
 export function listarProdutoOpcoes() {
   return apiRequest('/produtos/opcoes')
 }
@@ -118,6 +122,36 @@ export function atualizarProduto(id, payload) {
 
 export function excluirProduto(id) {
   return apiRequest(`/admin/produtos/${id}`, {
+    method: 'DELETE',
+  })
+}
+
+export function buscarCarrinho() {
+  return apiRequest('/carrinho')
+}
+
+export function adicionarItemCarrinho(produtoTamanhoId, quantidade) {
+  return apiPost('/carrinho/itens', { produtoTamanhoId, quantidade })
+}
+
+export function atualizarItemCarrinho(itemId, quantidade) {
+  return apiRequest(`/carrinho/itens/${itemId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ quantidade }),
+  })
+}
+
+export function removerItemCarrinho(itemId) {
+  return apiRequest(`/carrinho/itens/${itemId}`, {
+    method: 'DELETE',
+  })
+}
+
+export function limparCarrinho() {
+  return apiRequest('/carrinho', {
     method: 'DELETE',
   })
 }

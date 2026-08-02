@@ -19,10 +19,16 @@ public class ProdutoService {
 
     private final ProdutoRepository produtoRepository;
     private final com.webstore.backend.repository.ProdutoTamanhoRepository produtoTamanhoRepository;
+    private final com.webstore.backend.repository.ItemCarrinhoRepository itemCarrinhoRepository;
 
-    public ProdutoService(ProdutoRepository produtoRepository, com.webstore.backend.repository.ProdutoTamanhoRepository produtoTamanhoRepository) {
+    public ProdutoService(
+            ProdutoRepository produtoRepository,
+            com.webstore.backend.repository.ProdutoTamanhoRepository produtoTamanhoRepository,
+            com.webstore.backend.repository.ItemCarrinhoRepository itemCarrinhoRepository
+    ) {
         this.produtoRepository = produtoRepository;
         this.produtoTamanhoRepository = produtoTamanhoRepository;
+        this.itemCarrinhoRepository = itemCarrinhoRepository;
     }
 
     @Transactional(readOnly = true)
@@ -61,6 +67,7 @@ public class ProdutoService {
 
     public void excluir(Long id) {
         Produto produto = buscarPorId(id);
+        itemCarrinhoRepository.deleteByProdutoTamanhoProdutoId(id);
         produtoRepository.delete(produto);
     }
 
@@ -102,6 +109,13 @@ public class ProdutoService {
             pt.setQuantidade(quantidade);
             pt.setAtivo(true);
             newList.add(pt);
+        }
+
+        // Remove do carrinho variações que deixaram de existir antes do orphanRemoval.
+        for (ProdutoTamanho removido : existing.values()) {
+            if (removido.getId() != null) {
+                itemCarrinhoRepository.deleteByProdutoTamanhoId(removido.getId());
+            }
         }
 
         // orphanRemoval will delete removed ones

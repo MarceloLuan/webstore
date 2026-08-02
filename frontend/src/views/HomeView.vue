@@ -2,17 +2,25 @@
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import ProdutoImagem from '@/components/produtos/ProdutoImagem.vue'
-import { clearUser, getUser } from '@/services/auth'
 import { useProductStore } from '@/services/produtoStore'
+import { useAuthStore } from '@/stores/authStore'
+import { formatCurrency } from '@/utils/currency'
 
 const router = useRouter()
 const route = useRoute()
-const user = ref(getUser())
+const loading = ref(true)
 const { activeProducts, loadProducts } = useProductStore()
+const { user, logout: logoutUser } = useAuthStore()
 
 const searchTerm = computed(() => (typeof route.query.busca === 'string' ? route.query.busca.trim() : ''))
 const selectedCategory = computed(() => (
   typeof route.query.categoria === 'string' ? route.query.categoria.trim() : ''
+))
+const selectedSize = computed(() => (
+  typeof route.query.tamanho === 'string' ? route.query.tamanho.trim() : ''
+))
+const selectedOrder = computed(() => (
+  typeof route.query.ordenar === 'string' ? route.query.ordenar : 'relevancia'
 ))
 
 function normalizeSearchText(value) {
@@ -27,14 +35,33 @@ const filteredProducts = computed(() => {
   const search = normalizeSearchText(searchTerm.value)
   const category = normalizeSearchText(selectedCategory.value)
 
-  return activeProducts.value.filter((product) => {
+  const matches = activeProducts.value.filter((product) => {
     const matchesSearch = !search || normalizeSearchText(product.nome).includes(search)
     const matchesCategory = !category || normalizeSearchText(product.categoria) === category
-    return matchesSearch && matchesCategory
+    const matchesSize = !selectedSize.value || product.tamanhos?.some(
+      (item) => item.tamanho === selectedSize.value && Number(item.quantidade) > 0,
+    )
+    return matchesSearch && matchesCategory && matchesSize
   })
+
+  if (selectedOrder.value === 'menor-preco') {
+    return [...matches].sort((a, b) => Number(a.preco) - Number(b.preco))
+  }
+
+  if (selectedOrder.value === 'maior-preco') {
+    return [...matches].sort((a, b) => Number(b.preco) - Number(a.preco))
+  }
+
+  if (selectedOrder.value === 'nome') {
+    return [...matches].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
+  }
+
+  return matches
 })
 
-const hasActiveFilter = computed(() => Boolean(searchTerm.value || selectedCategory.value))
+const hasActiveFilter = computed(() => Boolean(
+  searchTerm.value || selectedCategory.value || selectedSize.value || selectedOrder.value !== 'relevancia',
+))
 const resultTitle = computed(() => {
   if (searchTerm.value && selectedCategory.value) {
     return `${selectedCategory.value}: resultados para “${searchTerm.value}”`
@@ -52,22 +79,19 @@ const resultTitle = computed(() => {
 })
 
 const authenticated = computed(() => Boolean(user.value))
-const role = computed(() => user.value?.role || 'VISITANTE')
-const roleLabel = computed(() => {
-  if (role.value === 'ADMIN') return 'Administrador'
-  if (authenticated.value) return 'Cliente'
-  return 'Visitante'
-})
 const firstName = computed(() => user.value?.nome?.split(' ')[0] || 'visitante')
 
 function logout() {
-  clearUser()
-  user.value = null
+  logoutUser()
   router.push('/home')
 }
 
 onMounted(async () => {
-  await loadProducts()
+  try {
+    await loadProducts()
+  } finally {
+    loading.value = false
+  }
 })
 </script>
 
@@ -107,7 +131,17 @@ onMounted(async () => {
         </span>
       </div>
 
-      <div v-if="filteredProducts.length" class="product-grid">
+      <div v-if="loading" class="product-grid loading-grid" aria-live="polite" aria-busy="true">
+        <span class="sr-only">Carregando produtos...</span>
+        <article v-for="index in 4" :key="index" class="product-card skeleton-card" aria-hidden="true">
+          <span class="skeleton skeleton-image"></span>
+          <span class="skeleton skeleton-label"></span>
+          <span class="skeleton skeleton-title"></span>
+          <span class="skeleton skeleton-price"></span>
+        </article>
+      </div>
+
+      <div v-else-if="filteredProducts.length" class="product-grid">
         <RouterLink
           v-for="product in filteredProducts"
           :key="product.id"
@@ -118,14 +152,14 @@ onMounted(async () => {
           <ProdutoImagem :src="product.imagem" :alt="product.nome" ratio="3 / 4" />
           <small>{{ product.destaque }}</small>
           <strong>{{ product.nome }}</strong>
-          <span>R$ {{ Number(product.preco).toFixed(2).replace('.', ',') }}</span>
+          <span>{{ formatCurrency(product.preco) }}</span>
           <span class="view-product">Ver produto</span>
         </RouterLink>
       </div>
 
       <div v-else class="empty-search" role="status">
         <strong>Nenhum produto encontrado.</strong>
-        <p>Tente outra pesquisa ou escolha uma categoria diferente.</p>
+        <p>Tente outra pesquisa ou remova algum dos filtros aplicados.</p>
       </div>
     </section>
 
@@ -308,6 +342,48 @@ h1 {
   border-radius: 18px;
   background: #fffaf7;
   text-align: center;
+}
+
+.skeleton-card {
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.skeleton {
+  display: block;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #eee4df 25%, #f9f3ef 50%, #eee4df 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.35s ease-in-out infinite;
+}
+
+.skeleton-image {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  border-radius: 12px;
+}
+
+.skeleton-label {
+  width: 38%;
+  height: 0.65rem;
+  margin-top: 0.45rem;
+}
+
+.skeleton-title {
+  width: 72%;
+  height: 0.95rem;
+}
+
+.skeleton-price {
+  width: 46%;
+  height: 1.1rem;
+  margin-top: 0.2rem;
+}
+
+@keyframes skeleton-loading {
+  to {
+    background-position-x: -200%;
+  }
 }
 
 .empty-search strong {

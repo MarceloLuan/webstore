@@ -1,5 +1,6 @@
 <script setup>
 import ProdutoImagem from '@/components/produtos/ProdutoImagem.vue'
+import { formatCurrency } from '@/utils/currency'
 
 defineProps({
   products: {
@@ -38,7 +39,7 @@ function getStockTotal(product) {
 
       <h3>{{ product.nome }}</h3>
       <p v-if="product.descricao">{{ product.descricao }}</p>
-      <strong>R$ {{ Number(product.preco).toFixed(2).replace('.', ',') }}</strong>
+      <strong>{{ formatCurrency(product.preco) }}</strong>
 
       <div v-if="adminMode" class="stock-row">
         <span class="stock-label">Estoque total</span>

@@ -3,10 +3,11 @@ import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { RouterLink } from 'vue-router'
 import { loginCliente } from '@/services/clienteApi'
-import { setAuthToken, setUser } from '@/services/auth'
+import { useAuthStore } from '@/stores/authStore'
 
 const router = useRouter()
 const route = useRoute()
+const { setSession } = useAuthStore()
 const email = ref('')
 const senha = ref('')
 const loading = ref(false)
@@ -31,8 +32,7 @@ async function enviarLogin() {
       senha: senha.value,
     })
 
-    setAuthToken(response.token)
-    setUser(response.user)
+    setSession(response.token, response.user)
     sucesso.value = `Login realizado com sucesso para ${response.user?.nome || email.value}.`
     router.push(redirectPath.value)
   } catch (e) {

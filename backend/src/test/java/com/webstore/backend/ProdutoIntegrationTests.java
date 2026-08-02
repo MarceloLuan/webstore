@@ -8,6 +8,8 @@ import com.webstore.backend.model.ProdutoTamanho;
 import com.webstore.backend.model.Tamanho;
 import com.webstore.backend.repository.ProdutoRepository;
 import com.webstore.backend.repository.UsuarioRepository;
+import com.webstore.backend.repository.CarrinhoRepository;
+import com.webstore.backend.repository.ItemCarrinhoRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,6 +42,12 @@ class ProdutoIntegrationTests {
     private ProdutoRepository produtoRepository;
 
     @Autowired
+    private CarrinhoRepository carrinhoRepository;
+
+    @Autowired
+    private ItemCarrinhoRepository itemCarrinhoRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Autowired
@@ -50,6 +58,8 @@ class ProdutoIntegrationTests {
 
     @BeforeEach
     void limparBase() {
+        itemCarrinhoRepository.deleteAll();
+        carrinhoRepository.deleteAll();
         produtoRepository.deleteAll();
         usuarioRepository.deleteAll();
         mockMvc = MockMvcBuilders.webAppContextSetup(context)

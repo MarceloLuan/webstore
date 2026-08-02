@@ -2,11 +2,11 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { atualizarMinhaConta, buscarMinhaConta, deletarMinhaConta } from '@/services/clienteApi'
-import { clearUser, getUser, setUser } from '@/services/auth'
+import { useAuthStore } from '@/stores/authStore'
 
 const router = useRouter()
 
-const user = ref(getUser())
+const { user, updateUser, logout } = useAuthStore()
 const loading = ref(true)
 const saving = ref(false)
 const deleting = ref(false)
@@ -58,12 +58,11 @@ async function carregarConta() {
 
   try {
     const conta = await buscarMinhaConta()
-    user.value = conta
     sincronizarForm(conta)
-    setUser(conta)
+    updateUser(conta)
   } catch (error) {
     if (isAuthError(error.message)) {
-      clearUser()
+      logout()
       await router.replace('/login')
       return
     }
@@ -122,12 +121,11 @@ async function salvarConta() {
       confirmacaoSenha: form.value.confirmacaoSenha,
     })
 
-    user.value = contaAtualizada
-    setUser(contaAtualizada)
+    updateUser(contaAtualizada)
     limparCamposSenha()
 
     if (changedPassword || oldEmail !== contaAtualizada.email) {
-      clearUser()
+      logout()
       await router.push('/login')
       return
     }
@@ -135,7 +133,7 @@ async function salvarConta() {
     sucesso.value = 'Conta atualizada com sucesso.'
   } catch (error) {
     if (isAuthError(error.message)) {
-      clearUser()
+      logout()
       await router.replace('/login')
       return
     }
@@ -164,11 +162,11 @@ async function inativarConta() {
 
   try {
     await deletarMinhaConta()
-    clearUser()
+    logout()
     router.push('/login')
   } catch (error) {
     if (isAuthError(error.message)) {
-      clearUser()
+      logout()
       await router.replace('/login')
       return
     }

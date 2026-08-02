@@ -3,6 +3,8 @@ package com.webstore.backend;
 import com.webstore.backend.model.Administrador;
 import com.webstore.backend.model.Cliente;
 import com.webstore.backend.repository.UsuarioRepository;
+import com.webstore.backend.repository.CarrinhoRepository;
+import com.webstore.backend.repository.ItemCarrinhoRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +30,12 @@ class JwtIntegrationTests {
     private UsuarioRepository usuarioRepository;
 
     @Autowired
+    private CarrinhoRepository carrinhoRepository;
+
+    @Autowired
+    private ItemCarrinhoRepository itemCarrinhoRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Autowired
@@ -38,6 +46,8 @@ class JwtIntegrationTests {
 
     @BeforeEach
     void limparBase() {
+        itemCarrinhoRepository.deleteAll();
+        carrinhoRepository.deleteAll();
         usuarioRepository.deleteAll();
         mockMvc = MockMvcBuilders.webAppContextSetup(context)
                 .addFilters(springSecurityFilterChain)

@@ -5,6 +5,7 @@ import HomeView from '@/views/HomeView.vue'
 import MinhaContaView from '@/views/MinhaContaView.vue'
 import ProdutosCrudView from '@/views/ProdutosCrudView.vue'
 import ProdutoDetalhesView from '@/views/ProdutoDetalhesView.vue'
+import CarrinhoView from '@/views/CarrinhoView.vue'
 import { getUser, isAuthenticated } from '@/services/auth'
 
 const router = createRouter({
@@ -50,6 +51,15 @@ const router = createRouter({
       path: '/produtos/:id',
       name: 'produto-detalhes',
       component: ProdutoDetalhesView,
+    },
+    {
+      path: '/carrinho',
+      name: 'carrinho',
+      component: CarrinhoView,
+      meta: {
+        requiresAuth: true,
+        roles: ['CLIENTE'],
+      },
     },
   ],
 })

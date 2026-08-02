@@ -43,6 +43,15 @@ public class ProdutoController {
         return ResponseEntity.ok(ProdutoOpcoesResponse.fromEnums());
     }
 
+    @GetMapping("/produtos/{id}")
+    public ResponseEntity<ProdutoResponse> buscarPorId(@PathVariable Long id) {
+        Produto produto = produtoService.buscarPorId(id);
+        if (Boolean.FALSE.equals(produto.getAtivo())) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(ProdutoResponse.from(produto));
+    }
+
     @GetMapping("/admin/produtos")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<ProdutoResponse>> listarTodos() {

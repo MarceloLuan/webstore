@@ -1,18 +1,23 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import ProdutoImagem from '@/components/produtos/ProdutoImagem.vue'
-import { getUser } from '@/services/auth'
 import { useProductStore } from '@/services/produtoStore'
+import { useAuthStore } from '@/stores/authStore'
+import { useCartStore } from '@/stores/cartStore'
+import { formatCurrency } from '@/utils/currency'
 
 const route = useRoute()
-const user = ref(getUser())
+const router = useRouter()
+const { user } = useAuthStore()
+const { addItem } = useCartStore()
+const { findProductById, loadProductById } = useProductStore()
+
 const loading = ref(true)
 const selectedSize = ref('')
 const quantity = ref(1)
 const actionMessage = ref('')
-
-const { findProductById, loadProducts } = useProductStore()
+const addingToCart = ref(false)
 
 const productId = computed(() => Number(route.params.id))
 const product = computed(() => findProductById(productId.value))
@@ -23,24 +28,38 @@ const availableSizes = computed(() => (
     ? product.value.tamanhos.filter((item) => Number(item.quantidade) > 0)
     : []
 ))
-const selectedStock = computed(() => (
-  availableSizes.value.find((item) => item.tamanho === selectedSize.value)?.quantidade || 0
+const selectedVariant = computed(() => (
+  availableSizes.value.find((item) => item.id === Number(selectedSize.value)) || null
 ))
+const selectedStock = computed(() => selectedVariant.value?.quantidade || 0)
+const displayedPrice = computed(() => selectedVariant.value?.preco ?? product.value?.preco ?? 0)
 
-function formatPrice(value) {
-  return Number(value || 0).toLocaleString('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  })
-}
-
-function showFutureAction(action) {
-  if (!selectedSize.value) {
+async function handleCartAction(goToCart = false) {
+  if (!selectedVariant.value) {
     actionMessage.value = 'Selecione um tamanho antes de continuar.'
     return
   }
 
-  actionMessage.value = `${action} estará disponível na próxima etapa do sistema.`
+  const normalizedQuantity = Math.trunc(Number(quantity.value))
+  if (!Number.isFinite(normalizedQuantity) || normalizedQuantity < 1 || normalizedQuantity > selectedStock.value) {
+    actionMessage.value = `Escolha uma quantidade entre 1 e ${selectedStock.value}.`
+    return
+  }
+
+  addingToCart.value = true
+  actionMessage.value = ''
+  try {
+    await addItem(selectedVariant.value.id, normalizedQuantity)
+    if (goToCart) {
+      await router.push({ name: 'carrinho' })
+      return
+    }
+    actionMessage.value = 'Produto adicionado ao carrinho.'
+  } catch (error) {
+    actionMessage.value = error.message || 'Não foi possível adicionar o produto ao carrinho.'
+  } finally {
+    addingToCart.value = false
+  }
 }
 
 watch(selectedSize, () => {
@@ -49,8 +68,13 @@ watch(selectedSize, () => {
 })
 
 onMounted(async () => {
-  await loadProducts()
-  loading.value = false
+  try {
+    await loadProductById(productId.value)
+  } catch {
+    // O estado de produto não encontrado é mostrado no template.
+  } finally {
+    loading.value = false
+  }
 })
 </script>
 
@@ -78,7 +102,7 @@ onMounted(async () => {
           <p class="highlight">{{ product.destaque }}</p>
         </div>
 
-        <strong class="price">{{ formatPrice(product.preco) }}</strong>
+        <strong class="price">{{ formatCurrency(displayedPrice) }}</strong>
 
         <div class="description">
           <h2>Sobre o produto</h2>
@@ -107,7 +131,7 @@ onMounted(async () => {
               Tamanho
               <select v-model="selectedSize">
                 <option value="">Selecione</option>
-                <option v-for="item in availableSizes" :key="item.tamanho" :value="item.tamanho">
+                <option v-for="item in availableSizes" :key="item.id" :value="item.id">
                   {{ item.tamanho }}
                 </option>
               </select>
@@ -126,10 +150,10 @@ onMounted(async () => {
           </div>
 
           <div class="purchase-actions">
-            <button type="button" class="secondary-action" @click="showFutureAction('Adicionar ao carrinho')">
-              Adicionar ao carrinho
+            <button type="button" class="secondary-action" :disabled="addingToCart" @click="handleCartAction(false)">
+              {{ addingToCart ? 'Adicionando...' : 'Adicionar ao carrinho' }}
             </button>
-            <button type="button" class="primary-action" @click="showFutureAction('Comprar agora')">
+            <button type="button" class="primary-action" :disabled="addingToCart" @click="handleCartAction(true)">
               Comprar agora
             </button>
           </div>
@@ -143,6 +167,19 @@ onMounted(async () => {
             <strong>Confira como o produto aparece para os usuários.</strong>
           </div>
           <RouterLink class="primary-link" to="/produtos">Gerenciar produtos</RouterLink>
+        </section>
+
+        <section v-else-if="availableSizes.length" class="login-note">
+          <div>
+            <p class="preview-label">Gostou deste produto?</p>
+            <strong>Entre na sua conta para escolher o tamanho e adicionar ao carrinho.</strong>
+          </div>
+          <RouterLink
+            class="primary-link"
+            :to="{ name: 'login', query: { redirect: route.fullPath } }"
+          >
+            Entrar para comprar
+          </RouterLink>
         </section>
       </div>
     </article>
@@ -270,7 +307,8 @@ h2 {
 }
 
 .purchase-preview,
-.admin-note {
+.admin-note,
+.login-note {
   display: grid;
   gap: 0.9rem;
   padding: 1rem;
@@ -353,6 +391,11 @@ input:focus {
   align-items: center;
 }
 
+.login-note {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
 .state-card {
   display: grid;
   justify-items: start;
@@ -384,7 +427,8 @@ input:focus {
   }
 
   .option-grid,
-  .admin-note {
+  .admin-note,
+  .login-note {
     grid-template-columns: 1fr;
   }
 

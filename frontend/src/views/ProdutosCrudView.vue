@@ -1,13 +1,13 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import ProdutoForm from '@/components/produtos/ProdutoForm.vue'
 import ProdutoList from '@/components/produtos/ProdutoList.vue'
-import { clearUser, getUser } from '@/services/auth'
 import { useProductStore } from '@/services/produtoStore'
+import { useAuthStore } from '@/stores/authStore'
 
 const router = useRouter()
-const user = ref(getUser())
+const { user, logout: logoutUser } = useAuthStore()
 const { activeProducts, createProduct, updateProduct, deleteProduct, loadProducts, loadProductOptions } = useProductStore()
 
 const loading = ref(false)
@@ -18,6 +18,7 @@ const feedbackTone = ref('')
 const categoryOptions = ref([])
 const sizeOptions = ref([])
 const searchTerm = ref('')
+const formPanel = ref(null)
 const form = ref({
   nome: '',
   codigo: '',
@@ -181,8 +182,10 @@ async function submitProduct() {
   }
 }
 
-function handleEdit(product) {
+async function handleEdit(product) {
   fillForm(product)
+  await nextTick()
+  formPanel.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
 async function handleDelete(product) {
@@ -199,7 +202,7 @@ async function handleDelete(product) {
 }
 
 function logout() {
-  clearUser()
+  logoutUser()
   router.push('/login')
 }
 
@@ -244,7 +247,7 @@ onMounted(async () => {
     </div>
 
     <div class="grid">
-      <section class="panel">
+      <section ref="formPanel" class="panel">
         <div class="panel-heading">
           <div>
             <p class="panel-kicker">{{ isEditing ? 'Editando' : 'Novo produto' }}</p>
