@@ -36,7 +36,7 @@ public enum Tamanho {
                 return t;
             }
         }
-        // try matching by enum name
+        
         try {
             return Tamanho.valueOf(label.trim().toUpperCase().replace(" ", "_").replace("-","_").replace("+","_"));
         } catch (Exception ex) {

@@ -1,9 +1,12 @@
 <script setup>
 import { onMounted, ref, watch } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRoute } from 'vue-router'
 import ProdutoImagem from '@/components/produtos/ProdutoImagem.vue'
 import { useCartStore } from '@/stores/cartStore'
 import { formatCurrency } from '@/utils/currency'
+import { buscarPedido, criarCheckout } from '@/services/clienteApi'
+
+const route = useRoute()
 
 const {
   cart,
@@ -19,6 +22,22 @@ const quantities = ref({})
 const busyItemId = ref(null)
 const clearing = ref(false)
 const feedback = ref('')
+const checkingOut = ref(false)
+const paymentFeedback = ref('')
+const paymentFeedbackType = ref('')
+
+async function checkout() {
+  checkingOut.value = true
+  feedback.value = ''
+  try {
+    const response = await criarCheckout()
+    window.location.assign(response.checkoutUrl)
+  } catch (checkoutError) {
+    feedback.value = checkoutError.message || 'Não foi possível abrir o Mercado Pago.'
+  } finally {
+    checkingOut.value = false
+  }
+}
 
 watch(
   () => cart.value.itens,
@@ -91,11 +110,40 @@ onMounted(async () => {
   } catch {
     // A mensagem da store é exibida na própria tela.
   }
+
+  const pedidoId = Number(route.query.pedido)
+  if (Number.isInteger(pedidoId) && pedidoId > 0) {
+    try {
+      const pedido = await buscarPedido(pedidoId)
+      const messages = {
+        PAGO: ['Pagamento confirmado! Seu pedido foi aprovado.', 'success'],
+        PENDENTE: ['Pagamento pendente. Avisaremos quando houver confirmação.', 'pending'],
+        AGUARDANDO_PAGAMENTO: ['Estamos aguardando a confirmação do Mercado Pago.', 'pending'],
+        RECUSADO: ['O pagamento foi recusado. Você pode tentar novamente.', 'error'],
+        CANCELADO: ['O pagamento foi cancelado.', 'error'],
+        ERRO: ['Não foi possível concluir este pagamento.', 'error'],
+      }
+      const [message, type] = messages[pedido.status] || messages.ERRO
+      paymentFeedback.value = message
+      paymentFeedbackType.value = type
+    } catch (pedidoError) {
+      paymentFeedback.value = pedidoError.message || 'Não foi possível consultar o pedido.'
+      paymentFeedbackType.value = 'error'
+    }
+  }
 })
 </script>
 
 <template>
   <section class="cart-page">
+    <div
+      v-if="paymentFeedback"
+      class="payment-feedback"
+      :class="`payment-feedback--${paymentFeedbackType}`"
+      role="status"
+    >
+      {{ paymentFeedback }}
+    </div>
     <header class="cart-hero">
       <div>
         <p class="eyebrow">Sua seleção</p>
@@ -219,8 +267,8 @@ onMounted(async () => {
           <strong>{{ formatCurrency(cart.subtotal) }}</strong>
         </div>
 
-        <button class="checkout-button" type="button" disabled>
-          Finalizar compra — em breve
+        <button class="checkout-button" type="button" :disabled="checkingOut" @click="checkout">
+          {{ checkingOut ? 'Abrindo Mercado Pago...' : 'Finalizar com Mercado Pago' }}
         </button>
         <small>O estoque será confirmado novamente ao finalizar o pedido.</small>
       </aside>
@@ -233,6 +281,31 @@ onMounted(async () => {
   width: min(1180px, calc(100% - 0.5rem));
   display: grid;
   gap: 1rem;
+}
+
+.payment-feedback {
+  padding: 1rem 1.2rem;
+  border: 1px solid transparent;
+  border-radius: 16px;
+  font-weight: 700;
+}
+
+.payment-feedback--success {
+  border-color: #8fc5a1;
+  background: #edf8f0;
+  color: #24613a;
+}
+
+.payment-feedback--pending {
+  border-color: #dfc580;
+  background: #fff8e6;
+  color: #755713;
+}
+
+.payment-feedback--error {
+  border-color: #dda0a0;
+  background: #fff0f0;
+  color: #8a1d1d;
 }
 
 .cart-hero,
@@ -492,13 +565,36 @@ h2 {
 }
 
 .checkout-button {
-  min-height: 46px;
+  min-height: 50px;
   border: 0;
   border-radius: 999px;
-  background: #b7aaad;
+  padding: 0.8rem 1.25rem;
+  background: linear-gradient(135deg, #7d2032 0%, #a52f46 100%);
   color: #fff;
   font: inherit;
   font-weight: 700;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  box-shadow: 0 10px 22px rgba(125, 32, 50, 0.24);
+  transition: transform 160ms ease, box-shadow 160ms ease, filter 160ms ease;
+}
+
+.checkout-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px rgba(125, 32, 50, 0.3);
+  filter: brightness(1.06);
+}
+
+.checkout-button:focus-visible {
+  outline: 3px solid rgba(201, 170, 115, 0.55);
+  outline-offset: 3px;
+}
+
+.checkout-button:disabled {
+  background: #b7aaad;
+  cursor: wait;
+  box-shadow: none;
+  opacity: 0.72;
 }
 
 .summary-card > small {

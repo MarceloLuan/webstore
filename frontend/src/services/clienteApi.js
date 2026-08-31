@@ -156,3 +156,11 @@ export function limparCarrinho() {
   })
 }
 
+export function criarCheckout() {
+  return apiPost('/pagamentos/checkout', {})
+}
+
+export function buscarPedido(pedidoId) {
+  return apiRequest(`/pagamentos/pedidos/${pedidoId}`)
+}
+

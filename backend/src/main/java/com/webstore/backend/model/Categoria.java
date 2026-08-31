@@ -38,7 +38,7 @@ public enum Categoria {
                 return c;
             }
         }
-        // try matching by enum name
+        
         try {
             return Categoria.valueOf(label.trim().toUpperCase().replace(" ", "_").replace("Á","A").replace("Í","I"));
         } catch (Exception ex) {

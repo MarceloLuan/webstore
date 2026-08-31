@@ -27,6 +27,7 @@ public class SecurityConfig {
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(authenticationEntryPoint))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/api/login", "/api/clientes").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/pagamentos/webhook").permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/produtos", "/api/produtos/opcoes", "/api/produtos/*").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()

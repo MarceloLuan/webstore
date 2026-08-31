@@ -7,20 +7,12 @@
     <list default="true" id="3a81bb75-21f2-4639-ae39-d479e1287322" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/webstore/backend/config/SecurityConfig.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/webstore/backend/config/SecurityConfig.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/webstore/backend/controller/ProdutoController.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/webstore/backend/controller/ProdutoController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/webstore/backend/service/ProdutoService.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/webstore/backend/service/ProdutoService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/test/java/com/webstore/backend/JwtIntegrationTests.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/test/java/com/webstore/backend/JwtIntegrationTests.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/test/java/com/webstore/backend/ProdutoIntegrationTests.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/test/java/com/webstore/backend/ProdutoIntegrationTests.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/App.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/App.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/components/produtos/ProdutoList.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/components/produtos/ProdutoList.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/router/index.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/router/index.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/webstore/backend/model/Categoria.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/webstore/backend/model/Categoria.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/webstore/backend/model/Tamanho.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/webstore/backend/model/Tamanho.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/webstore/backend/model/Usuario.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/webstore/backend/model/Usuario.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/resources/application.properties" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/resources/application.properties" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/services/clienteApi.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/services/clienteApi.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/services/produtoStore.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/services/produtoStore.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/views/HomeView.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/views/HomeView.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/views/LoginView.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/views/LoginView.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/views/MinhaContaView.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/views/MinhaContaView.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/views/ProdutoDetalhesView.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/views/ProdutoDetalhesView.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/views/ProdutosCrudView.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/views/ProdutosCrudView.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/views/CarrinhoView.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/views/CarrinhoView.vue" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -208,6 +200,9 @@
       <workItem from="1783470692505" duration="10071000" />
       <workItem from="1785276472280" duration="221000" />
       <workItem from="1785276783212" duration="4093000" />
+      <workItem from="1786237910423" duration="547000" />
+      <workItem from="1786981227411" duration="86000" />
+      <workItem from="1788138479132" duration="3618000" />
     </task>
     <servers />
   </component>

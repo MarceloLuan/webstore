@@ -41,7 +41,6 @@ public abstract class Usuario {
         this.ativo = true;
     }
 
-    // Getters e Setters
     public Long getId() {
         return id;
     }
