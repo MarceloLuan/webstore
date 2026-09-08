@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import jakarta.persistence.LockModeType;
 
 import java.util.Optional;
+import java.util.List;
 
 public interface PedidoRepository extends JpaRepository<Pedido, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
@@ -18,4 +19,7 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
     Optional<Pedido> findWithItensForUpdateById(@Param("id") Long id);
 
     Optional<Pedido> findByIdAndClienteId(Long id, Long clienteId);
+
+    @EntityGraph(attributePaths = {"itens"})
+    List<Pedido> findAllByClienteIdOrderByCriadoEmDesc(Long clienteId);
 }

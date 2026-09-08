@@ -3,6 +3,8 @@ package com.webstore.backend.service;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.webstore.backend.controller.dto.CheckoutResponse;
 import com.webstore.backend.controller.dto.PedidoStatusResponse;
+import com.webstore.backend.controller.dto.PedidoResponse;
+import com.webstore.backend.controller.dto.ItemPedidoResponse;
 import com.webstore.backend.model.*;
 import com.webstore.backend.repository.CarrinhoRepository;
 import com.webstore.backend.repository.ClienteRepository;
@@ -16,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.server.ResponseStatusException;
 
 import javax.crypto.Mac;
@@ -69,11 +72,12 @@ public class PagamentoService {
         preference.put("items", criarItensMercadoPago(pedido));
         preference.put("payer", Map.of("name", cliente.getNome(), "email", cliente.getEmail()));
         preference.put("external_reference", "pedido-" + pedido.getId());
-        preference.put("auto_return", "approved");
+        boolean retornoPublico = webhookUrl != null && !webhookUrl.isBlank();
         preference.put("back_urls", Map.of(
-                "success", urlRetorno(pedido, "sucesso"),
-                "pending", urlRetorno(pedido, "pendente"),
-                "failure", urlRetorno(pedido, "falha")));
+                "success", urlRetorno(pedido, "sucesso", retornoPublico),
+                "pending", urlRetorno(pedido, "pendente", retornoPublico),
+                "failure", urlRetorno(pedido, "falha", retornoPublico)));
+        if (retornoPublico) preference.put("auto_return", "approved");
         if (webhookUrl != null && !webhookUrl.isBlank()) preference.put("notification_url", webhookUrl);
 
         try {
@@ -90,6 +94,15 @@ public class PagamentoService {
             pedido.setMercadoPagoPreferenceId(response.id());
             pedidoRepository.save(pedido);
             return new CheckoutResponse(checkoutUrl, response.id(), pedido.getId());
+        } catch (RestClientResponseException exception) {
+            pedido.setStatus(PedidoStatus.ERRO);
+            pedidoRepository.save(pedido);
+            String detalhe = exception.getResponseBodyAsString();
+            if (detalhe == null || detalhe.isBlank()) detalhe = exception.getStatusText();
+            if (detalhe.length() > 500) detalhe = detalhe.substring(0, 500);
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                    "Mercado Pago recusou o checkout (HTTP " + exception.getStatusCode().value() + "): " + detalhe,
+                    exception);
         } catch (RestClientException exception) {
             pedido.setStatus(PedidoStatus.ERRO);
             pedidoRepository.save(pedido);
@@ -106,10 +119,34 @@ public class PagamentoService {
         return new PedidoStatusResponse(pedido.getId(), pedido.getStatus(), pedido.getTotal());
     }
 
+    @Transactional(readOnly = true)
+    public List<PedidoResponse> listarPedidos() {
+        Cliente cliente = buscarClienteAutenticado();
+        return pedidoRepository.findAllByClienteIdOrderByCriadoEmDesc(cliente.getId()).stream()
+                .map(pedido -> new PedidoResponse(
+                        pedido.getId(), pedido.getStatus(), pedido.getTotal(), pedido.getCriadoEm(),
+                        pedido.getItens().stream()
+                                .map(item -> new ItemPedidoResponse(item.getNomeProduto(), item.getTamanho(),
+                                        item.getQuantidade(), item.getPrecoUnitario()))
+                                .toList()))
+                .toList();
+    }
+
     @Transactional
     public void processarWebhook(String dataId, String xSignature, String xRequestId) {
         validarAccessToken();
         validarAssinatura(dataId, xSignature, xRequestId);
+        sincronizarPagamento(dataId);
+    }
+
+    @Transactional
+    public void processarRetorno(String paymentId) {
+        if (paymentId == null || paymentId.isBlank()) return;
+        validarAccessToken();
+        sincronizarPagamento(paymentId.trim());
+    }
+
+    private void sincronizarPagamento(String dataId) {
         PagamentoResponse pagamento;
         try {
             pagamento = mercadoPagoClient.get().uri("/v1/payments/{id}", dataId)
@@ -280,8 +317,19 @@ public class PagamentoService {
         };
     }
 
-    private String urlRetorno(Pedido pedido, String resultado) {
-        return frontendUrl + "/carrinho?pagamento=" + resultado + "&pedido=" + pedido.getId();
+    public String urlFrontendRetorno(Long pedidoId, String resultado) {
+        String resultadoSeguro = switch (resultado) {
+            case "sucesso", "pendente", "falha" -> resultado;
+            default -> "falha";
+        };
+        return frontendUrl + "/carrinho?pagamento=" + resultadoSeguro + "&pedido=" + pedidoId;
+    }
+
+    private String urlRetorno(Pedido pedido, String resultado, boolean retornoPublico) {
+        if (!retornoPublico) return urlFrontendRetorno(pedido.getId(), resultado);
+        int apiIndex = webhookUrl.indexOf("/api/");
+        String publicBaseUrl = apiIndex > 0 ? webhookUrl.substring(0, apiIndex) : webhookUrl.replaceAll("/$", "");
+        return publicBaseUrl + "/api/pagamentos/retorno/" + resultado + "/" + pedido.getId();
     }
 
     private void validarAccessToken() {
