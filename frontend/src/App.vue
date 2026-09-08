@@ -236,6 +236,7 @@ onBeforeUnmount(() => {
 
       <nav class="site-nav" aria-label="Categorias">
         <RouterLink v-if="isAdmin" class="nav-link nav-admin-link" to="/produtos">Gerenciar produtos</RouterLink>
+        <RouterLink v-if="isClient" class="nav-link nav-admin-link" to="/meus-pedidos">Meus pedidos</RouterLink>
         <RouterLink
           class="nav-link"
           :class="{ 'nav-link-selected': route.name === 'home' && !selectedCategory }"

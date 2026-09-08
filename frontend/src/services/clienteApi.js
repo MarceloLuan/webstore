@@ -164,3 +164,7 @@ export function buscarPedido(pedidoId) {
   return apiRequest(`/pagamentos/pedidos/${pedidoId}`)
 }
 
+export function listarMeusPedidos() {
+  return apiRequest('/pagamentos/pedidos')
+}
+

@@ -6,6 +6,7 @@ import MinhaContaView from '@/views/MinhaContaView.vue'
 import ProdutosCrudView from '@/views/ProdutosCrudView.vue'
 import ProdutoDetalhesView from '@/views/ProdutoDetalhesView.vue'
 import CarrinhoView from '@/views/CarrinhoView.vue'
+import MeusPedidosView from '@/views/MeusPedidosView.vue'
 import { getUser, isAuthenticated } from '@/services/auth'
 
 const router = createRouter({
@@ -60,6 +61,12 @@ const router = createRouter({
         requiresAuth: true,
         roles: ['CLIENTE'],
       },
+    },
+    {
+      path: '/meus-pedidos',
+      name: 'meus-pedidos',
+      component: MeusPedidosView,
+      meta: { requiresAuth: true, roles: ['CLIENTE'] },
     },
   ],
 })

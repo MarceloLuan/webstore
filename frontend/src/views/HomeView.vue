@@ -31,6 +31,10 @@ function normalizeSearchText(value) {
     .trim()
 }
 
+function hasStock(product) {
+  return product.tamanhos?.some((item) => Number(item.quantidade) > 0) ?? false
+}
+
 const filteredProducts = computed(() => {
   const search = normalizeSearchText(searchTerm.value)
   const category = normalizeSearchText(selectedCategory.value)
@@ -45,18 +49,18 @@ const filteredProducts = computed(() => {
   })
 
   if (selectedOrder.value === 'menor-preco') {
-    return [...matches].sort((a, b) => Number(a.preco) - Number(b.preco))
+    return [...matches].sort((a, b) => Number(a.preco) - Number(b.preco)).sort((a, b) => Number(hasStock(b)) - Number(hasStock(a)))
   }
 
   if (selectedOrder.value === 'maior-preco') {
-    return [...matches].sort((a, b) => Number(b.preco) - Number(a.preco))
+    return [...matches].sort((a, b) => Number(b.preco) - Number(a.preco)).sort((a, b) => Number(hasStock(b)) - Number(hasStock(a)))
   }
 
   if (selectedOrder.value === 'nome') {
-    return [...matches].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
+    return [...matches].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')).sort((a, b) => Number(hasStock(b)) - Number(hasStock(a)))
   }
 
-  return matches
+  return matches.sort((a, b) => Number(hasStock(b)) - Number(hasStock(a)))
 })
 
 const hasActiveFilter = computed(() => Boolean(
@@ -146,10 +150,14 @@ onMounted(async () => {
           v-for="product in filteredProducts"
           :key="product.id"
           class="product-card"
+          :class="{ 'product-card--sold-out': !hasStock(product) }"
           :to="{ name: 'produto-detalhes', params: { id: product.id } }"
           :aria-label="`Ver detalhes de ${product.nome}`"
         >
-          <ProdutoImagem :src="product.imagem" :alt="product.nome" ratio="3 / 4" />
+          <div class="product-image-shell">
+            <ProdutoImagem :src="product.imagem" :alt="product.nome" ratio="3 / 4" />
+            <span v-if="!hasStock(product)" class="sold-out-badge">Sem estoque</span>
+          </div>
           <small>{{ product.destaque }}</small>
           <strong>{{ product.nome }}</strong>
           <span>{{ formatCurrency(product.preco) }}</span>
@@ -423,6 +431,28 @@ h1 {
 
 .product-card :deep(.product-media) {
   margin-bottom: 0.45rem;
+}
+
+.product-image-shell { position: relative; }
+
+.product-card--sold-out { background: #f4efed; }
+
+.product-card--sold-out :deep(.product-media) {
+  opacity: 0.52;
+  filter: grayscale(0.45);
+}
+
+.sold-out-badge {
+  position: absolute;
+  top: 0.7rem;
+  right: 0.7rem;
+  border-radius: 999px;
+  padding: 0.42rem 0.7rem;
+  background: rgba(79, 26, 37, 0.92);
+  color: #fff !important;
+  font-size: 0.7rem !important;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 .product-card small {

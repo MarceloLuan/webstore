@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import placeholderImage from '@/assets/images/default.jpg'
 
 const props = defineProps({
@@ -25,6 +25,20 @@ const showPlaceholder = computed(() => !hasImage.value || hasError.value)
 function handleError() {
   hasError.value = true
 }
+
+function retryImage() {
+  if (hasError.value && hasImage.value) hasError.value = false
+}
+
+onMounted(() => {
+  window.addEventListener('focus', retryImage)
+  window.addEventListener('online', retryImage)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('focus', retryImage)
+  window.removeEventListener('online', retryImage)
+})
 
 watch(
   () => props.src,
