@@ -15,6 +15,8 @@ const categoryOptions = ref([])
 const sizeOptions = ref([])
 const { loadProductOptions } = useProductStore()
 const { user, isAdmin } = useAuthStore()
+const firstName = computed(() => user.value?.nome?.trim().split(/\s+/)[0] || 'visitante')
+
 const { itemCount, loadCart, resetCart } = useCartStore()
 
 const accountTarget = computed(() => (user.value ? '/minha-conta' : '/login'))
@@ -219,11 +221,19 @@ onBeforeUnmount(() => {
         </div>
 
         <div class="header-actions">
-          <RouterLink class="icon-button" :to="accountTarget" :aria-label="user ? 'Minha conta' : 'Entrar'">
+          <RouterLink class="icon-button" :to="accountTarget" title="Meu perfil" aria-label="Meu perfil">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm0 2c-4.42 0-8 2.24-8 5v1h16v-1c0-2.76-3.58-5-8-5Z" />
             </svg>
           </RouterLink>
+
+          <div class="welcome-account">
+            <RouterLink class="account-greeting" :to="accountTarget">{{ user ? `Olá, ${firstName}!` : 'Bem-vindo!' }}</RouterLink>
+            <div v-if="!user" class="account-links">
+              <RouterLink :to="accountTarget">Entrar</RouterLink>
+              <RouterLink to="/cadastro">Criar conta</RouterLink>
+            </div>
+          </div>
 
           <RouterLink class="icon-button cart-button" :to="cartTarget" aria-label="Abrir carrinho">
             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -231,6 +241,9 @@ onBeforeUnmount(() => {
             </svg>
             <span v-if="isClient && itemCount" class="cart-count">{{ itemCount > 99 ? '99+' : itemCount }}</span>
           </RouterLink>
+        </div>
+        <div class="header-benefits" aria-label="Serviços da loja">
+          <span>Frete e troca</span><span>Compra segura</span><span>Atendimento rápido</span>
         </div>
       </div>
 
@@ -311,9 +324,20 @@ body {
   backdrop-filter: blur(10px);
 }
 
+.welcome-account { display: grid; gap: .2rem; min-width: 0; font-size: .74rem; }
+.account-links { display: flex; flex-wrap: wrap; align-items: center; gap: .2rem .65rem; }
+.welcome-account .account-greeting { text-decoration: none; overflow-wrap: anywhere; }
+.welcome-account a {
+  color: var(--primary-wine); font: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 3px;
+}
+.header-benefits {
+  display: grid; gap: .25rem; padding-left: .85rem;
+  border-left: 1px solid var(--border-soft); color: #785e52; font-size: .68rem;
+}
+
 .header-top {
   display: grid;
-  grid-template-columns: auto minmax(220px, 560px) auto;
+  grid-template-columns: auto minmax(160px, 1fr) minmax(0, auto) auto;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
@@ -540,7 +564,10 @@ body {
   display: flex;
   align-items: center;
   gap: 0.45rem;
+  min-width: 0;
 }
+
+.header-actions .icon-button { flex-shrink: 0; }
 
 .sr-only {
   position: absolute;
@@ -630,14 +657,14 @@ body {
   padding: 1.1rem 0.5rem 2rem;
 }
 
-@media (max-width: 700px) {
+@media (max-width: 960px) {
   .site-header {
     width: calc(100% - 1rem);
     padding: 0.5rem 0.65rem 0.7rem;
   }
 
   .header-top {
-    grid-template-columns: 1fr auto;
+    grid-template-columns: minmax(0, 1fr) auto;
     gap: 0.65rem;
   }
 
@@ -647,9 +674,13 @@ body {
   }
 
   .search-tools {
-    grid-column: 1 / -1;
+    grid-column: 1;
     grid-row: 2;
   }
+
+  .header-benefits { grid-column: 2; grid-row: 2; }
+
+  .header-actions { max-width: 100%; }
 
   .header-search input {
     height: 40px;
@@ -682,6 +713,18 @@ body {
   .content-area {
     padding: 0.9rem 0.25rem 1.4rem;
     align-items: flex-start;
+  }
+}
+@media (max-width: 600px) {
+  .brand-logo { max-width: 72px; }
+  .header-actions { gap: .3rem; }
+  .header-actions .icon-button { width: 32px; height: 36px; }
+  .welcome-account { max-width: 130px; font-size: .68rem; }
+  .search-tools { grid-column: 1 / -1; }
+  .header-benefits {
+    grid-column: 1 / -1; grid-row: 3;
+    display: flex; flex-wrap: wrap; justify-content: center; gap: .3rem .8rem;
+    border-left: 0; padding-left: 0; font-size: .62rem;
   }
 }
 </style>

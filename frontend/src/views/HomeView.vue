@@ -1,16 +1,14 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { RouterLink, useRoute } from 'vue-router'
 import ProdutoImagem from '@/components/produtos/ProdutoImagem.vue'
 import { useProductStore } from '@/services/produtoStore'
-import { useAuthStore } from '@/stores/authStore'
+import NovidadesCarrossel from '@/components/produtos/NovidadesCarrossel.vue'
 import { formatCurrency } from '@/utils/currency'
 
-const router = useRouter()
 const route = useRoute()
 const loading = ref(true)
 const { activeProducts, loadProducts } = useProductStore()
-const { user, logout: logoutUser } = useAuthStore()
 
 const searchTerm = computed(() => (typeof route.query.busca === 'string' ? route.query.busca.trim() : ''))
 const selectedCategory = computed(() => (
@@ -82,14 +80,6 @@ const resultTitle = computed(() => {
   return 'Produtos em destaque'
 })
 
-const authenticated = computed(() => Boolean(user.value))
-const firstName = computed(() => user.value?.nome?.split(' ')[0] || 'visitante')
-
-function logout() {
-  logoutUser()
-  router.push('/home')
-}
-
 onMounted(async () => {
   try {
     await loadProducts()
@@ -101,28 +91,7 @@ onMounted(async () => {
 
 <template>
   <section class="home-page">
-    <section v-if="!hasActiveFilter" class="hero-banner">
-      <div class="hero-copy">
-        <p class="eyebrow">Novidades da semana</p>
-        <h1>{{ authenticated ? `Olá, ${firstName}.` : 'Versatilidade e liberdade para o seu estilo' }}</h1>
-        <p v-if="!authenticated" class="lead">
-          Veja os produtos disponíveis, escolha seu look favorito e entre quando quiser.
-        </p>
-
-        <div class="hero-actions">
-          <RouterLink v-if="!authenticated" class="hero-button hero-button-solid" to="/login">Entrar</RouterLink>
-          <RouterLink v-if="!authenticated" class="hero-button hero-button-ghost" to="/cadastro">Criar conta</RouterLink>
-          <RouterLink v-if="authenticated" class="hero-button hero-button-solid" to="/minha-conta">Minha conta</RouterLink>
-          <button v-if="authenticated" class="hero-button hero-button-ghost" type="button" @click="logout">Sair</button>
-        </div>
-      </div>
-
-      <div class="hero-accent">
-        <span>Frete e troca</span>
-        <strong>Compra segura</strong>
-        <small>Atendimento rápido</small>
-      </div>
-    </section>
+    <NovidadesCarrossel v-if="!hasActiveFilter && !loading" :products="activeProducts" />
 
     <section class="featured-section">
       <div class="section-heading">
@@ -189,7 +158,6 @@ onMounted(async () => {
   gap: 1rem;
 }
 
-.eyebrow,
 .panel-kicker {
   margin: 0 0 0.35rem;
   text-transform: uppercase;
@@ -198,114 +166,9 @@ onMounted(async () => {
   color: #8c6a4d;
 }
 
-h1,
 h2,
 p {
   margin: 0;
-}
-
-h1 {
-  color: #5b1a26;
-  font-size: clamp(2rem, 3.9vw, 4rem);
-  line-height: 1.05;
-  max-width: 14ch;
-  font-family: 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
-}
-
-.lead {
-  margin-top: 0.9rem;
-  max-width: 42ch;
-  color: #65565a;
-  font-size: 1rem;
-  line-height: 1.7;
-  text-wrap: balance;
-}
-
-.hero-banner {
-  display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(220px, 0.65fr);
-  gap: 1rem;
-  align-items: stretch;
-  min-height: 340px;
-  padding: clamp(1.2rem, 2vw, 2rem);
-  border-radius: 28px;
-  background:
-    radial-gradient(circle at top right, rgba(201, 170, 115, 0.26), transparent 34%),
-    linear-gradient(135deg, #6b1f2a 0%, #7f2b39 54%, #efe2d6 100%);
-  border: 1px solid rgba(106, 27, 44, 0.1);
-  box-shadow: 0 20px 50px rgba(106, 27, 44, 0.12);
-}
-
-.hero-copy {
-  color: #fff8f1;
-  display: grid;
-  align-content: center;
-  gap: 0.35rem;
-  padding-right: min(4vw, 1.6rem);
-}
-
-.hero-copy .eyebrow {
-  color: rgba(238, 205, 127, 0.88);
-}
-
-.hero-copy h1,
-.hero-copy .lead {
-  color: #e2c06a;
-}
-
-.hero-actions {
-  display: flex;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-  margin-top: 0.5rem;
-}
-
-.hero-button {
-  border-radius: 999px;
-  padding: 0.82rem 1.15rem;
-  text-decoration: none;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  border: 1px solid transparent;
-}
-
-.hero-button-solid {
-  background: #fff;
-  color: #5b1a26;
-}
-
-.hero-button-ghost {
-  background: transparent;
-  color: #fff8f1;
-  border-color: rgba(255, 248, 241, 0.45);
-}
-
-.hero-button-ghost:hover {
-  text-transform: uppercase;
-}
-
-.hero-accent {
-  border-radius: 22px;
-  background: rgba(255, 249, 243, 0.82);
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  display: grid;
-  align-content: center;
-  gap: 0.4rem;
-  padding: 1.15rem;
-  color: #5b1a26;
-}
-
-.hero-accent span,
-.hero-accent small {
-  color: #8c6a4d;
-  text-transform: uppercase;
-  letter-spacing: 0.16em;
-  font-size: 0.74rem;
-}
-
-.hero-accent strong {
-  font-family: 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
-  font-size: clamp(1.6rem, 2.7vw, 2.4rem);
 }
 
 .featured-section {
@@ -515,14 +378,9 @@ h1 {
 }
 
 @media (max-width: 960px) {
-  .hero-banner,
   .info-strip,
   .product-grid {
     grid-template-columns: 1fr;
-  }
-
-  .hero-copy {
-    padding-right: 0;
   }
 
   .section-heading {
@@ -532,17 +390,6 @@ h1 {
 }
 
 @media (max-width: 640px) {
-  .hero-banner {
-    padding: 1rem;
-    border-radius: 22px;
-    min-height: auto;
-  }
-
-  .hero-copy h1,
-  .hero-copy .lead {
-    max-width: 100%;
-  }
-
   .home-page {
     width: calc(100% - 0.25rem);
   }

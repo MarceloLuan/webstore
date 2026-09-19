@@ -7,6 +7,11 @@ import { useAuthStore } from '@/stores/authStore'
 const router = useRouter()
 
 const { user, updateUser, logout } = useAuthStore()
+
+function sairDaConta() {
+  logout()
+  router.replace('/home')
+}
 const loading = ref(true)
 const saving = ref(false)
 const deleting = ref(false)
@@ -197,6 +202,9 @@ onMounted(() => {
           Atualize suas informações pessoais, ajuste a senha e, se quiser, inative a conta.
         </p>
       </div>
+      <button class="secondary-button logout-button" type="button" :disabled="saving || deleting" @click="sairDaConta">
+        Sair da conta
+      </button>
     </div>
 
     <div v-if="loading" class="panel loading-panel">Carregando conta...</div>
@@ -453,6 +461,12 @@ input:focus {
   padding: 0.82rem 1rem;
   font-weight: 700;
   cursor: pointer;
+}
+
+.logout-button {
+  align-self: center;
+  justify-self: start;
+  flex-shrink: 0;
 }
 
 .primary-button {
