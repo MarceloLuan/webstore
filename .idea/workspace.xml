@@ -6,9 +6,19 @@
   <component name="ChangeListManager">
     <list default="true" id="3a81bb75-21f2-4639-ae39-d479e1287322" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/backend/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/webstore/backend/controller/PagamentoController.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/webstore/backend/controller/PagamentoController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/webstore/backend/model/Pedido.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/webstore/backend/model/Pedido.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/webstore/backend/repository/PedidoRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/webstore/backend/repository/PedidoRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/webstore/backend/repository/ProdutoTamanhoRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/webstore/backend/repository/ProdutoTamanhoRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/webstore/backend/service/PagamentoService.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/webstore/backend/service/PagamentoService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/resources/application.properties" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/resources/application.properties" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/test/resources/application.properties" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/test/resources/application.properties" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/App.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/App.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/services/clienteApi.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/services/clienteApi.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/views/CarrinhoView.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/views/CarrinhoView.vue" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/views/HomeView.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/views/HomeView.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/views/MinhaContaView.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/views/MinhaContaView.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/views/MeusPedidosView.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/views/MeusPedidosView.vue" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -199,7 +209,8 @@
       <workItem from="1786237910423" duration="547000" />
       <workItem from="1786981227411" duration="86000" />
       <workItem from="1788138479132" duration="13007000" />
-      <workItem from="1789854844179" duration="855000" />
+      <workItem from="1789854844179" duration="3889000" />
+      <workItem from="1789943740251" duration="2481000" />
     </task>
     <servers />
   </component>

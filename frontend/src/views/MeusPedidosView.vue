@@ -1,12 +1,27 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import { listarMeusPedidos } from '@/services/clienteApi'
+import { listarMeusPedidos, tentarPagamentoNovamente } from '@/services/clienteApi'
 import { formatCurrency } from '@/utils/currency'
 
 const pedidos = ref([])
 const loading = ref(true)
 const error = ref('')
+const retrying = ref(null)
+const retryError = ref('')
+
+async function tentarNovamente(pedidoId) {
+  retrying.value = pedidoId
+  retryError.value = ''
+  try {
+    const checkout = await tentarPagamentoNovamente(pedidoId)
+    window.location.assign(checkout.checkoutUrl)
+  } catch (requestError) {
+    retryError.value = requestError.message || 'Não foi possível tentar o pagamento novamente.'
+  } finally {
+    retrying.value = null
+  }
+}
 
 const statusInfo = {
   AGUARDANDO_PAGAMENTO: ['Aguardando pagamento', 'waiting'],
@@ -39,6 +54,7 @@ onMounted(async () => {
       <RouterLink to="/home">Continuar comprando</RouterLink>
     </header>
 
+    <p v-if="retryError" class="state-card error" role="alert">{{ retryError }}</p>
     <div v-if="loading" class="state-card">Carregando seus pedidos...</div>
     <div v-else-if="error" class="state-card error">{{ error }}</div>
     <div v-else-if="!pedidos.length" class="state-card">
@@ -61,7 +77,13 @@ onMounted(async () => {
             <span>{{ formatCurrency(Number(item.precoUnitario) * item.quantidade) }}</span>
           </li>
         </ul>
-        <footer><span>Total</span><strong>{{ formatCurrency(pedido.total) }}</strong></footer>
+        <footer>
+          <button v-if="['RECUSADO', 'ERRO', 'AGUARDANDO_PAGAMENTO'].includes(pedido.status)"
+            type="button" :disabled="retrying !== null" @click="tentarNovamente(pedido.id)">
+            {{ retrying === pedido.id ? 'Abrindo pagamento...' : 'Tentar pagamento novamente' }}
+          </button>
+          <span>Total</span><strong>{{ formatCurrency(pedido.total) }}</strong>
+        </footer>
       </article>
     </div>
   </section>
@@ -90,6 +112,10 @@ li:last-child { border-bottom: 0; }
 li > span:first-child { display: grid; gap: .2rem; }
 .order-card footer { padding: 1rem 1.2rem; display: flex; justify-content: flex-end; align-items: center; gap: 1rem; background: #faf5f2; }
 .order-card footer strong { color: #5b1a26; font-size: 1.15rem; }
+.order-card footer { flex-wrap: wrap; }
+.order-card footer button { margin-right: auto; border: 0; border-radius: 999px; padding: .75rem 1rem; background: #6a1b2c; color: #fff; font: inherit; font-size: .8rem; cursor: pointer; }
+.order-card footer button:disabled { opacity: .6; cursor: wait; }
+.order-card footer button:focus-visible { outline: 3px solid #c9aa73; outline-offset: 3px; }
 .state-card { padding: 2rem; text-align: center; color: #65565a; }
 .error { color: #8a1d1d; }
 @media (max-width: 650px) { .orders-header { align-items: flex-start; flex-direction: column; } .order-card > header { grid-template-columns: 1fr; } }

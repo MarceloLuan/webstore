@@ -1,0 +1,25 @@
+# Local secrets (all project directories).
+.env
+.env.*
+!.env.example
+*.env
+*.env.*
+!*.env.example
+
+# Local Spring configuration overrides.
+application-local.properties
+application-local.yml
+application-local.yaml
+application-secrets.properties
+application-secrets.yml
+application-secrets.yaml
+
+# Private keys and key stores.
+*.key
+*.pem
+*.p12
+*.pfx
+*.jks
+
+# Local output can contain credentials or request data.
+*.log

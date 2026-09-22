@@ -52,6 +52,10 @@ public class Pedido {
     @Column(nullable = false)
     private boolean estoqueBaixado;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "tentativa_concluida_id", unique = true)
+    private TentativaPagamento tentativaConcluida;
+
     @OneToMany(mappedBy = "pedido", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ItemPedido> itens = new ArrayList<>();
 
@@ -90,6 +94,8 @@ public class Pedido {
     public String getMercadoPagoStatus() { return mercadoPagoStatus; }
     public void setMercadoPagoStatus(String value) { this.mercadoPagoStatus = value; }
     public boolean isEstoqueBaixado() { return estoqueBaixado; }
+    public TentativaPagamento getTentativaConcluida() { return tentativaConcluida; }
+    public void setTentativaConcluida(TentativaPagamento value) { tentativaConcluida = value; }
     public void setEstoqueBaixado(boolean estoqueBaixado) { this.estoqueBaixado = estoqueBaixado; }
     public List<ItemPedido> getItens() { return itens; }
     public LocalDateTime getCriadoEm() { return criadoEm; }

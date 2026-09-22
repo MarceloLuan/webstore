@@ -143,6 +143,7 @@ onMounted(async () => {
       role="status"
     >
       {{ paymentFeedback }}
+      <RouterLink to="/meus-pedidos">Ver pedido e opções de pagamento</RouterLink>
     </div>
     <header class="cart-hero">
       <div>

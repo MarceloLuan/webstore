@@ -14,7 +14,6 @@ import java.util.List;
 
 public interface PedidoRepository extends JpaRepository<Pedido, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @EntityGraph(attributePaths = {"itens", "itens.produtoTamanho"})
     @Query("select p from Pedido p where p.id = :id")
     Optional<Pedido> findWithItensForUpdateById(@Param("id") Long id);
 

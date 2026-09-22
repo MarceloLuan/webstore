@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { RouterView, useRoute, useRouter } from 'vue-router'
 import logo from '@/assets/logo.png'
+import SiteFooter from '@/components/SiteFooter.vue'
 import { useProductStore } from '@/services/produtoStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useCartStore } from '@/stores/cartStore'
@@ -272,6 +273,7 @@ onBeforeUnmount(() => {
     <main class="content-area">
       <RouterView />
     </main>
+    <SiteFooter />
   </div>
 </template>
 

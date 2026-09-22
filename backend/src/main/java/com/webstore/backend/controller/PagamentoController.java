@@ -1,6 +1,7 @@
 package com.webstore.backend.controller;
 
 import com.webstore.backend.controller.dto.CheckoutResponse;
+import com.webstore.backend.controller.dto.TentativaPagamentoResponse;
 import com.webstore.backend.service.PagamentoService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
@@ -33,6 +34,18 @@ public class PagamentoController {
     @PreAuthorize("hasRole('CLIENTE')")
     public CheckoutResponse criarCheckout() {
         return pagamentoService.criarCheckout();
+    }
+
+    @PostMapping("/pedidos/{pedidoId}/tentativas")
+    @PreAuthorize("hasRole('CLIENTE')")
+    public CheckoutResponse tentarNovamente(@PathVariable Long pedidoId) {
+        return pagamentoService.tentarNovamente(pedidoId);
+    }
+
+    @GetMapping("/pedidos/{pedidoId}/tentativas")
+    @PreAuthorize("hasRole('CLIENTE')")
+    public List<TentativaPagamentoResponse> listarTentativas(@PathVariable Long pedidoId) {
+        return pagamentoService.listarTentativas(pedidoId);
     }
 
     @GetMapping("/pedidos/{pedidoId}")

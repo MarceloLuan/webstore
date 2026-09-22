@@ -160,6 +160,10 @@ export function criarCheckout() {
   return apiPost('/pagamentos/checkout', {})
 }
 
+export function tentarPagamentoNovamente(pedidoId) {
+  return apiPost(`/pagamentos/pedidos/${pedidoId}/tentativas`, {})
+}
+
 export function buscarPedido(pedidoId) {
   return apiRequest(`/pagamentos/pedidos/${pedidoId}`)
 }

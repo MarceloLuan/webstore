@@ -140,12 +140,6 @@ onMounted(async () => {
       </div>
     </section>
 
-    <section class="info-strip">
-      <article class="info-card">
-        <span>Loja física</span>
-        <strong>Avenida São Paulo, 147 - A.</strong>
-      </article>
-    </section>
   </section>
 </template>
 
@@ -344,41 +338,7 @@ p {
   font-weight: 600;
 }
 
-.info-strip {
-  display: grid;
-  gap: 0.9rem;
-  justify-items: center;
-}
-
-.info-card {
-  width: 100%;
-  border-radius: 22px;
-  padding: 1.2rem 1.4rem;
-  background:
-    radial-gradient(circle at top right, rgba(201, 170, 115, 0.14), transparent 28%),
-    linear-gradient(135deg, #6b1f2a 0%, #7f2b39 100%);
-  border: 1px solid rgba(201, 170, 115, 0.22);
-  box-shadow: 0 16px 34px rgba(106, 27, 44, 0.12);
-  display: grid;
-  gap: 0.25rem;
-  justify-items: center;
-  text-align: center;
-}
-
-.info-card span {
-  color: rgba(238, 205, 127, 0.9);
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-  font-size: 0.72rem;
-}
-
-.info-card strong {
-  color: #e2c06a;
-  font-size: 1.08rem;
-}
-
 @media (max-width: 960px) {
-  .info-strip,
   .product-grid {
     grid-template-columns: 1fr;
   }
