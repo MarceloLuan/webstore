@@ -57,7 +57,7 @@ public class ProdutoController {
     public ResponseEntity<List<ProdutoResponse>> listarTodos() {
         return ResponseEntity.ok(
                 produtoService.listarTodos().stream()
-                        .map(ProdutoResponse::from)
+                        .map(ProdutoResponse::fromAdmin)
                         .toList()
         );
     }
@@ -66,14 +66,14 @@ public class ProdutoController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ProdutoResponse> criar(@RequestBody ProdutoRequest request) {
         Produto produto = produtoService.cadastrar(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(ProdutoResponse.from(produto));
+        return ResponseEntity.status(HttpStatus.CREATED).body(ProdutoResponse.fromAdmin(produto));
     }
 
     @PutMapping("/admin/produtos/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ProdutoResponse> atualizar(@PathVariable Long id, @RequestBody ProdutoRequest request) {
         Produto produto = produtoService.atualizar(id, request);
-        return ResponseEntity.ok(ProdutoResponse.from(produto));
+        return ResponseEntity.ok(ProdutoResponse.fromAdmin(produto));
     }
 
     @DeleteMapping("/admin/produtos/{id}")

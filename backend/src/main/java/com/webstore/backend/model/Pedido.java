@@ -23,8 +23,20 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "pedidos")
+@org.hibernate.annotations.Check(name = "ck_pedido_recebimento", constraints = Pedido.RECEBIMENTO_CONSTRAINT)
+@Table(name = "pedidos", indexes = @jakarta.persistence.Index(name = "ix_pedido_reserva_expira", columnList = "reserva_status,reserva_expira_em"))
 public class Pedido {
+    public static final String RECEBIMENTO_CONSTRAINT = "modalidade IS NULL OR "
+            + "(modalidade = 'RETIRADA' AND entrega_destinatario IS NULL AND entrega_cep IS NULL "
+            + "AND entrega_rua IS NULL AND entrega_numero IS NULL AND entrega_complemento IS NULL "
+            + "AND entrega_bairro IS NULL AND entrega_cidade IS NULL AND entrega_uf IS NULL) OR "
+            + "(modalidade = 'ENTREGA' AND entrega_destinatario IS NOT NULL AND trim(entrega_destinatario) <> '' "
+            + "AND entrega_cep IS NOT NULL AND length(entrega_cep) = 8 "
+            + "AND entrega_rua IS NOT NULL AND trim(entrega_rua) <> '' "
+            + "AND entrega_numero IS NOT NULL AND trim(entrega_numero) <> '' "
+            + "AND entrega_bairro IS NOT NULL AND trim(entrega_bairro) <> '' "
+            + "AND entrega_cidade IS NOT NULL AND trim(entrega_cidade) <> '' "
+            + "AND entrega_uf IS NOT NULL AND length(entrega_uf) = 2)";
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -39,6 +51,23 @@ public class Pedido {
 
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal total;
+
+    // SHA-256 do cliente e snapshot do carrinho; nulo para pedidos anteriores.
+    @Column(name = "checkout_fingerprint", unique = true, length = 64)
+    private String checkoutFingerprint;
+
+    // Nulo somente para pedidos anteriores à implantação; nunca inferir destino antigo.
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20, updatable = false)
+    private ModalidadeRecebimento modalidade;
+    @jakarta.persistence.Embedded
+    private EnderecoEntrega enderecoEntrega;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "reserva_status", length = 20)
+    private ReservaStatus reservaStatus;
+    @Column(name = "reserva_expira_em")
+    private java.time.Instant reservaExpiraEm;
 
     @Column(name = "mercado_pago_preference_id", unique = true)
     private String mercadoPagoPreferenceId;
@@ -81,11 +110,24 @@ public class Pedido {
     }
 
     public Long getId() { return id; }
+    public ModalidadeRecebimento getModalidade() { return modalidade; }
+    public EnderecoEntrega getEnderecoEntrega() { return enderecoEntrega; }
+    public void definirRecebimento(ModalidadeRecebimento modalidade, EnderecoEntrega endereco) {
+        if (id != null) throw new IllegalStateException("O endereço do pedido não pode ser alterado.");
+        this.modalidade = modalidade;
+        this.enderecoEntrega = endereco;
+    }
     public Cliente getCliente() { return cliente; }
     public void setCliente(Cliente cliente) { this.cliente = cliente; }
     public PedidoStatus getStatus() { return status; }
     public void setStatus(PedidoStatus status) { this.status = status; }
     public BigDecimal getTotal() { return total; }
+    public ReservaStatus getReservaStatus() { return reservaStatus; }
+    public void setReservaStatus(ReservaStatus value) { reservaStatus = value; }
+    public java.time.Instant getReservaExpiraEm() { return reservaExpiraEm; }
+    public void setReservaExpiraEm(java.time.Instant value) { reservaExpiraEm = value; }
+    public String getCheckoutFingerprint() { return checkoutFingerprint; }
+    public void setCheckoutFingerprint(String value) { checkoutFingerprint = value; }
     public void setTotal(BigDecimal total) { this.total = total; }
     public String getMercadoPagoPreferenceId() { return mercadoPagoPreferenceId; }
     public void setMercadoPagoPreferenceId(String value) { this.mercadoPagoPreferenceId = value; }

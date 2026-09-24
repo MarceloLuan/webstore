@@ -140,7 +140,7 @@ public class CarrinhoService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Este produto não está mais disponível.");
         }
 
-        if (variacao.getQuantidade() == null || variacao.getQuantidade() <= 0) {
+        if (variacao.getQuantidadeDisponivel() <= 0) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Este tamanho está sem estoque.");
         }
 
@@ -155,10 +155,10 @@ public class CarrinhoService {
     }
 
     private void validarEstoque(ProdutoTamanho variacao, int quantidade) {
-        if (quantidade > variacao.getQuantidade()) {
+        if (quantidade > variacao.getQuantidadeDisponivel()) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
-                    "Quantidade indisponível. Há " + variacao.getQuantidade() + " unidade(s) em estoque."
+                    "Quantidade indisponível. Há " + variacao.getQuantidadeDisponivel() + " unidade(s) em estoque."
             );
         }
     }
@@ -215,7 +215,7 @@ public class CarrinhoService {
         response.setImagem(produto.getImagem());
         response.setTamanho(variacao.getTamanho().getLabel());
         response.setQuantidade(item.getQuantidade());
-        response.setEstoqueDisponivel(variacao.getQuantidade());
+        response.setEstoqueDisponivel(variacao.getQuantidadeDisponivel());
         response.setPrecoUnitario(preco);
         response.setSubtotal(preco.multiply(BigDecimal.valueOf(item.getQuantidade())));
         return response;

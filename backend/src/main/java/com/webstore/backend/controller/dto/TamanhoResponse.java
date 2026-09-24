@@ -8,6 +8,7 @@ public class TamanhoResponse {
     private Long id;
     private String tamanho;
     private Integer quantidade;
+    private int quantidadeReservada;
     private BigDecimal preco;
 
     public TamanhoResponse() {
@@ -21,13 +22,22 @@ public class TamanhoResponse {
     }
 
     public static TamanhoResponse from(ProdutoTamanho pt) {
-        return new TamanhoResponse(
+        TamanhoResponse response = new TamanhoResponse(
                 pt.getId(),
                 pt.getTamanho() == null ? null : pt.getTamanho().getLabel(),
-                pt.getQuantidade(),
+                pt.getQuantidadeDisponivel(),
                 pt.getPreco()
         );
+        response.quantidadeReservada = pt.getQuantidadeReservada();
+        return response;
     }
+
+    public static TamanhoResponse fromAdmin(ProdutoTamanho pt) {
+        TamanhoResponse response = from(pt);
+        response.quantidade = pt.getQuantidade();
+        return response;
+    }
+    public int getQuantidadeReservada() { return quantidadeReservada; }
 
     public Long getId() {
         return id;

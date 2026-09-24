@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import java.math.BigDecimal;
 
 @Entity
+@org.hibernate.annotations.Check(name = "ck_produto_tamanhos_estoque", constraints = "quantidade >= 0 and quantidade_reservada >= 0 and quantidade_reservada <= quantidade")
 @Table(name = "produto_tamanhos")
 public class ProdutoTamanho {
 
@@ -21,6 +22,9 @@ public class ProdutoTamanho {
     private Tamanho tamanho;
 
     private Integer quantidade;
+
+    @Column(nullable = false, columnDefinition = "integer default 0")
+    private int quantidadeReservada;
 
     @Column(precision = 12, scale = 2)
     private BigDecimal preco;
@@ -57,6 +61,10 @@ public class ProdutoTamanho {
     public Integer getQuantidade() {
         return quantidade;
     }
+
+    public int getQuantidadeReservada() { return quantidadeReservada; }
+    public void setQuantidadeReservada(int value) { quantidadeReservada = value; }
+    public int getQuantidadeDisponivel() { return (quantidade == null ? 0 : quantidade) - quantidadeReservada; }
 
     public void setQuantidade(Integer quantidade) {
         this.quantidade = quantidade;

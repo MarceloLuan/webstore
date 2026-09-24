@@ -156,8 +156,8 @@ export function limparCarrinho() {
   })
 }
 
-export function criarCheckout() {
-  return apiPost('/pagamentos/checkout', {})
+export function criarCheckout(recebimento) {
+  return apiPost('/pagamentos/checkout', recebimento)
 }
 
 export function tentarPagamentoNovamente(pedidoId) {

@@ -32,6 +32,14 @@ public class ProdutoResponse {
     }
 
     public static ProdutoResponse from(Produto produto) {
+        return from(produto, false);
+    }
+
+    public static ProdutoResponse fromAdmin(Produto produto) {
+        return from(produto, true);
+    }
+
+    private static ProdutoResponse from(Produto produto, boolean admin) {
         ProdutoResponse resp = new ProdutoResponse(
                 produto.getId(),
                 produto.getCodigo(),
@@ -49,7 +57,7 @@ public class ProdutoResponse {
             java.util.List<TamanhoResponse> list = new java.util.ArrayList<>();
             for (com.webstore.backend.model.ProdutoTamanho pt : produto.getTamanhos()) {
                 if (pt.getAtivo() == null || pt.getAtivo()) {
-                    list.add(TamanhoResponse.from(pt));
+                    list.add(admin ? TamanhoResponse.fromAdmin(pt) : TamanhoResponse.from(pt));
                 }
             }
             resp.setTamanhos(list);

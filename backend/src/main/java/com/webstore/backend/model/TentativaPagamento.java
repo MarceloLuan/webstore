@@ -15,6 +15,8 @@ public class TentativaPagamento {
     @Column(unique = true)
     private String paymentId;
     private String statusProvedor;
+    private String detalheStatusProvedor;
+    private java.time.Instant atualizadoProvedorEm;
     @Enumerated(EnumType.STRING) @Column(nullable = false, length = 30)
     private PedidoStatus status = PedidoStatus.AGUARDANDO_PAGAMENTO;
     @Column(length = 2048)
@@ -36,6 +38,10 @@ public class TentativaPagamento {
     public void setPaymentId(String value) { paymentId = value; }
     public String getStatusProvedor() { return statusProvedor; }
     public void setStatusProvedor(String value) { statusProvedor = value; }
+    public String getDetalheStatusProvedor() { return detalheStatusProvedor; }
+    public void setDetalheStatusProvedor(String value) { detalheStatusProvedor = value; }
+    public java.time.Instant getAtualizadoProvedorEm() { return atualizadoProvedorEm; }
+    public void setAtualizadoProvedorEm(java.time.Instant value) { atualizadoProvedorEm = value; }
     public PedidoStatus getStatus() { return status; }
     public void setStatus(PedidoStatus value) { status = value; }
     public String getCheckoutUrl() { return checkoutUrl; }

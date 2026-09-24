@@ -1,6 +1,7 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
+import RetiradaInfo from '@/components/RetiradaInfo.vue'
 import { listarMeusPedidos, tentarPagamentoNovamente } from '@/services/clienteApi'
 import { formatCurrency } from '@/utils/currency'
 
@@ -11,6 +12,7 @@ const retrying = ref(null)
 const retryError = ref('')
 
 async function tentarNovamente(pedidoId) {
+  if (retrying.value !== null) return
   retrying.value = pedidoId
   retryError.value = ''
   try {
@@ -27,8 +29,14 @@ const statusInfo = {
   AGUARDANDO_PAGAMENTO: ['Aguardando pagamento', 'waiting'],
   PENDENTE: ['Pagamento pendente', 'pending'],
   PAGO: ['Pago', 'paid'],
+  PAGO_EM_REVISAO: ['Pagamento recebido · estoque em revisão', 'pending'],
   RECUSADO: ['Recusado', 'failed'],
   CANCELADO: ['Cancelado', 'failed'],
+  EXPIRADO: ['Pagamento expirado', 'failed'],
+  REEMBOLSADO: ['Reembolsado', 'failed'],
+  REEMBOLSADO_PARCIAL: ['Reembolsado parcialmente', 'pending'],
+  CHARGEBACK: ['Chargeback', 'failed'],
+  EM_MEDIACAO: ['Pagamento em mediação', 'pending'],
   ERRO: ['Erro no pagamento', 'failed'],
 }
 
@@ -71,6 +79,22 @@ onMounted(async () => {
             {{ (statusInfo[pedido.status] || statusInfo.ERRO)[0] }}
           </span>
         </header>
+        <div v-if="pedido.modalidade === 'ENTREGA' && pedido.enderecoEntrega" class="stock-notice">
+          <strong>Entrega para {{ pedido.enderecoEntrega.destinatario }}</strong><br />
+          {{ pedido.enderecoEntrega.rua }}, {{ pedido.enderecoEntrega.numero }}
+          <template v-if="pedido.enderecoEntrega.complemento"> — {{ pedido.enderecoEntrega.complemento }}</template><br />
+          {{ pedido.enderecoEntrega.bairro }} · {{ pedido.enderecoEntrega.cidade }}/{{ pedido.enderecoEntrega.uf }}<br />
+          CEP {{ pedido.enderecoEntrega.cep }}
+        </div>
+        <RetiradaInfo v-else-if="pedido.modalidade === 'RETIRADA'" />
+        <p v-else class="stock-notice">Recebimento não informado neste pedido antigo.</p>
+        <p v-if="pedido.status === 'PAGO_EM_REVISAO'" class="stock-notice" role="status">
+          Recebemos o pagamento após a liberação da reserva ou sem estoque disponível. A loja precisa confirmar a disponibilidade ou providenciar o reembolso. Não faça outro pagamento.
+        </p>
+        <p v-else-if="pedido.reservaStatus === 'ATIVA' && pedido.reservaExpiraEm" class="stock-notice">
+          Reserva até {{ formatDate(pedido.reservaExpiraEm) }}. Após esse prazo, a disponibilidade será verificada novamente.
+        </p>
+        <p v-else-if="pedido.reservaStatus === 'EXPIRADA'" class="stock-notice">A reserva de estoque expirou.</p>
         <ul>
           <li v-for="(item, index) in pedido.itens" :key="index">
             <span><strong>{{ item.nome }}</strong><small>Tamanho {{ item.tamanho }} · {{ item.quantidade }} un.</small></span>
@@ -78,7 +102,7 @@ onMounted(async () => {
           </li>
         </ul>
         <footer>
-          <button v-if="['RECUSADO', 'ERRO', 'AGUARDANDO_PAGAMENTO'].includes(pedido.status)"
+          <button v-if="pedido.modalidade && ['RECUSADO', 'EXPIRADO', 'ERRO', 'AGUARDANDO_PAGAMENTO'].includes(pedido.status)"
             type="button" :disabled="retrying !== null" @click="tentarNovamente(pedido.id)">
             {{ retrying === pedido.id ? 'Abrindo pagamento...' : 'Tentar pagamento novamente' }}
           </button>
@@ -98,6 +122,7 @@ onMounted(async () => {
 .orders-header h1 { color: #5b1a26; font-family: Georgia, serif; }
 a { color: #6a1b2c; font-weight: 700; }
 .orders-list { display: grid; gap: .9rem; }
+.stock-notice { margin: 0; padding: 1rem 1.2rem; background: #fff4d8; color: #755713; font-size: .85rem; line-height: 1.5; }
 .order-card { overflow: hidden; }
 .order-card > header { padding: 1rem 1.2rem; background: #fffaf7; display: grid; grid-template-columns: 1fr 1.5fr auto; align-items: center; gap: 1rem; }
 .order-card header div { display: grid; gap: .2rem; }

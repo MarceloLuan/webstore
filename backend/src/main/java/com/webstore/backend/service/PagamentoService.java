@@ -2,6 +2,7 @@ package com.webstore.backend.service;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.webstore.backend.controller.dto.CheckoutResponse;
+import com.webstore.backend.controller.dto.CheckoutRequest;
 import com.webstore.backend.controller.dto.PedidoStatusResponse;
 import com.webstore.backend.controller.dto.PedidoResponse;
 import com.webstore.backend.controller.dto.ItemPedidoResponse;
@@ -11,7 +12,6 @@ import com.webstore.backend.repository.CarrinhoRepository;
 import com.webstore.backend.repository.ClienteRepository;
 import com.webstore.backend.repository.PedidoRepository;
 import com.webstore.backend.repository.TentativaPagamentoRepository;
-import com.webstore.backend.repository.ProdutoTamanhoRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
@@ -19,6 +19,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
@@ -26,6 +28,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
+import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -37,8 +40,11 @@ public class PagamentoService {
     private final ClienteRepository clienteRepository;
     private final PedidoRepository pedidoRepository;
     private final TentativaPagamentoRepository tentativaRepository;
-    private final ProdutoTamanhoRepository tamanhoRepository;
+    private final ReservaEstoqueService reservas;
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(PagamentoService.class);
     private final RestClient mercadoPagoClient;
+    private final TransactionTemplate checkoutTransaction;
+    private final EntityManager entityManager;
     private final String accessToken;
     private final String webhookSecret;
     private final String webhookUrl;
@@ -48,8 +54,10 @@ public class PagamentoService {
                             ClienteRepository clienteRepository,
                             PedidoRepository pedidoRepository,
                             TentativaPagamentoRepository tentativaRepository,
-                            ProdutoTamanhoRepository tamanhoRepository,
+                            ReservaEstoqueService reservas,
                             RestClient.Builder restClientBuilder,
+                            PlatformTransactionManager transactionManager,
+                            EntityManager entityManager,
                             @Value("${mercadopago.access-token:}") String accessToken,
                             @Value("${mercadopago.webhook-secret:}") String webhookSecret,
                             @Value("${app.webhook-url:}") String webhookUrl,
@@ -58,18 +66,28 @@ public class PagamentoService {
         this.clienteRepository = clienteRepository;
         this.pedidoRepository = pedidoRepository;
         this.tentativaRepository = tentativaRepository;
-        this.tamanhoRepository = tamanhoRepository;
+        this.reservas = reservas;
         this.mercadoPagoClient = restClientBuilder.baseUrl("https://api.mercadopago.com").build();
+        this.checkoutTransaction = new TransactionTemplate(transactionManager);
+        this.entityManager = entityManager;
         this.accessToken = accessToken;
         this.webhookSecret = webhookSecret == null ? "" : webhookSecret.trim();
         this.webhookUrl = webhookUrl;
         this.frontendUrl = frontendUrl.replaceAll("/$", "");
     }
 
-    @Transactional(noRollbackFor = FalhaCheckoutException.class)
-    public CheckoutResponse criarCheckout() {
+    public CheckoutResponse criarCheckout(CheckoutRequest request) {
+        if (request == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe a modalidade de recebimento.");
+        EnderecoEntrega endereco = request.validarEndereco();
         validarAccessToken();
+        reservas.expirarVencidas();
+        return executarCheckout(checkoutTransaction.execute(status -> prepararCompra(request.modalidade(), endereco)));
+    }
+
+    private CheckoutPreparado prepararCompra(ModalidadeRecebimento modalidade, EnderecoEntrega endereco) {
         Cliente cliente = buscarClienteAutenticado();
+        // Serializa a decisão de criar/reutilizar entre abas e instâncias da aplicação.
+        clienteRepository.findForCheckoutById(cliente.getId()).orElseThrow();
         Carrinho carrinho = carrinhoRepository.findByClienteId(cliente.getId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "O carrinho está vazio."));
         if (carrinho.getItens().isEmpty()) {
@@ -77,26 +95,61 @@ public class PagamentoService {
         }
 
         Pedido pedido = criarPedido(cliente, carrinho);
+        pedido.definirRecebimento(modalidade, endereco);
+        String fingerprint = fingerprint(cliente, carrinho, pedido);
+        Optional<Long> existente = pedidoRepository.findIdByCheckoutFingerprint(fingerprint);
+        if (existente.isPresent()) {
+            Pedido anterior = pedidoRepository.findWithItensForUpdateById(existente.get()).orElseThrow();
+            if (anterior.isEstoqueBaixado() || anterior.getTentativaConcluida() != null
+                    || anterior.getStatus() == PedidoStatus.PAGO || anterior.getStatus() == PedidoStatus.CANCELADO) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Esta compra já foi encerrada. Consulte seus pedidos.");
+            }
+            if (anterior.getStatus() == PedidoStatus.PENDENTE) throw checkoutEmConfirmacao();
+            List<TentativaPagamento> tentativas = tentativaRepository.findAllByPedidoIdOrderByIdDesc(anterior.getId());
+            if (tentativas.isEmpty()) throw checkoutEmConfirmacao();
+            TentativaPagamento tentativa = tentativas.get(0);
+            if (tentativa.getCheckoutUrl() == null) throw checkoutEmConfirmacao();
+            if (!reservas.ativa(anterior)) throw reservaVencida();
+            return new CheckoutPreparado(anterior.getId(), tentativa.getId(), null,
+                    new CheckoutResponse(tentativa.getCheckoutUrl(), tentativa.getPreferenceId(), anterior.getId()));
+        }
+        pedido.setCheckoutFingerprint(fingerprint);
+        // Bloquear variações antes dos INSERTs de itens evita upgrades de FK locks no PostgreSQL.
+        if (!reservas.reservar(pedido)) throw estoqueIndisponivel();
         pedidoRepository.saveAndFlush(pedido);
-        return abrirTentativa(pedido);
+        return prepararTentativa(pedido);
     }
 
-    @Transactional(noRollbackFor = FalhaCheckoutException.class)
     public CheckoutResponse tentarNovamente(Long pedidoId) {
         validarAccessToken();
+        reservas.expirarVencidas();
+        return executarCheckout(checkoutTransaction.execute(status -> prepararRetomada(pedidoId)));
+    }
+
+    private CheckoutPreparado prepararRetomada(Long pedidoId) {
         Pedido pedido = buscarPedidoDoClienteComLock(pedidoId);
         importarTentativaLegada(pedido);
+        if (pedido.getModalidade() == null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Pedido antigo sem modalidade de recebimento. Consulte a loja antes de tentar um novo pagamento.");
+        }
         if (pedido.isEstoqueBaixado() || pedido.getTentativaConcluida() != null
                 || pedido.getStatus() == PedidoStatus.PAGO || pedido.getStatus() == PedidoStatus.CANCELADO) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Este pedido não permite novo pagamento.");
         }
         List<TentativaPagamento> anteriores = tentativaRepository.findAllByPedidoIdOrderByIdDesc(pedidoId);
+        if (anteriores.stream().anyMatch(t -> "checkout_processing".equals(t.getStatusProvedor())
+                || "checkout_unknown".equals(t.getStatusProvedor()))) {
+            throw checkoutEmConfirmacao();
+        }
         if (anteriores.stream().anyMatch(t -> t.getStatus() == PedidoStatus.PENDENTE)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Aguarde a confirmação do pagamento pendente.");
         }
         for (TentativaPagamento tentativa : anteriores) {
-            if (tentativa.getStatus() == PedidoStatus.AGUARDANDO_PAGAMENTO && tentativa.getCheckoutUrl() != null) {
-                return new CheckoutResponse(tentativa.getCheckoutUrl(), tentativa.getPreferenceId(), pedidoId);
+            if (tentativa.getStatus() == PedidoStatus.AGUARDANDO_PAGAMENTO && tentativa.getCheckoutUrl() != null
+                    && reservas.ativa(pedido)) {
+                return new CheckoutPreparado(pedidoId, tentativa.getId(), null,
+                        new CheckoutResponse(tentativa.getCheckoutUrl(), tentativa.getPreferenceId(), pedidoId));
             }
         }
         for (ItemPedido item : pedido.getItens()) {
@@ -106,7 +159,7 @@ public class PagamentoService {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "Produto indisponível para nova tentativa.");
             }
         }
-        return abrirTentativa(pedido);
+        return prepararTentativa(pedido);
     }
 
     @Transactional
@@ -130,9 +183,11 @@ public class PagamentoService {
         return pedido;
     }
 
-    private CheckoutResponse abrirTentativa(Pedido pedido) {
+    private CheckoutPreparado prepararTentativa(Pedido pedido) {
+        if (!reservas.reservar(pedido)) throw estoqueIndisponivel();
         TentativaPagamento tentativa = new TentativaPagamento();
         tentativa.setPedido(pedido);
+        tentativa.setStatusProvedor("checkout_processing");
         tentativaRepository.saveAndFlush(tentativa);
         Cliente cliente = pedido.getCliente();
         Map<String, Object> preference = new HashMap<>();
@@ -147,44 +202,118 @@ public class PagamentoService {
         if (retornoPublico) preference.put("auto_return", "approved");
         if (webhookUrl != null && !webhookUrl.isBlank()) preference.put("notification_url", webhookUrl);
 
+        // A transação confirma pedido e tentativa ANTES de qualquer chamada externa.
+        return new CheckoutPreparado(pedido.getId(), tentativa.getId(), preference, null);
+    }
+
+    private CheckoutResponse executarCheckout(CheckoutPreparado preparado) {
+        if (preparado.resposta() != null) return preparado.resposta();
+        PreferenciaResponse response;
+        String checkoutUrl;
+
         try {
-            PreferenciaResponse response = mercadoPagoClient.post().uri("/checkout/preferences")
-                    .header("Authorization", "Bearer " + accessToken).body(preference)
+            response = mercadoPagoClient.post().uri("/checkout/preferences")
+                    .header("Authorization", "Bearer " + accessToken).body(preparado.preference())
                     .retrieve().body(PreferenciaResponse.class);
             if (response == null || response.id() == null) {
                 throw new RestClientException("Resposta de checkout inválida.");
             }
-            String checkoutUrl = response.sandboxInitPoint() != null ? response.sandboxInitPoint() : response.initPoint();
+            checkoutUrl = response.sandboxInitPoint() != null ? response.sandboxInitPoint() : response.initPoint();
             if (checkoutUrl == null || checkoutUrl.isBlank()) {
                 throw new RestClientException("URL de checkout ausente.");
             }
-            pedido.setMercadoPagoPreferenceId(response.id());
-            pedido.setStatus(PedidoStatus.AGUARDANDO_PAGAMENTO);
-            tentativa.setPreferenceId(response.id());
-            tentativa.setCheckoutUrl(checkoutUrl);
-            tentativaRepository.save(tentativa);
-            pedidoRepository.save(pedido);
-            return new CheckoutResponse(checkoutUrl, response.id(), pedido.getId());
         } catch (RestClientResponseException exception) {
-            registrarFalhaCheckout(pedido, tentativa);
+            int status = exception.getStatusCode().value();
+            registrarFalhaCheckout(preparado, Set.of(400, 401, 403, 404, 422).contains(status));
             throw new FalhaCheckoutException(exception);
         } catch (RestClientException exception) {
-            registrarFalhaCheckout(pedido, tentativa);
+            registrarFalhaCheckout(preparado, false);
             throw new FalhaCheckoutException(exception);
+        }
+        CheckoutResponse finalizada = checkoutTransaction.execute(status -> {
+            // OSIV pode manter o snapshot da primeira transação nesta requisição.
+            entityManager.clear();
+            Pedido pedido = pedidoRepository.findWithItensForUpdateById(preparado.pedidoId()).orElseThrow();
+            TentativaPagamento tentativa = tentativaRepository.findById(preparado.tentativaId()).orElseThrow();
+            pedido.setMercadoPagoPreferenceId(response.id());
+            tentativa.setPreferenceId(response.id());
+            tentativa.setCheckoutUrl(checkoutUrl);
+            // Um webhook pode ter confirmado o pagamento antes desta resposta HTTP.
+            if ("checkout_processing".equals(tentativa.getStatusProvedor())) {
+                tentativa.setStatusProvedor(null);
+                if (pedido.getTentativaConcluida() == null && !pedido.isEstoqueBaixado()) {
+                    pedido.setStatus(PedidoStatus.AGUARDANDO_PAGAMENTO);
+                }
+            }
+            if (pedido.getTentativaConcluida() != null || pedido.isEstoqueBaixado()) return null;
+            if (!reservas.ativa(pedido)) return null;
+            return new CheckoutResponse(checkoutUrl, response.id(), pedido.getId());
+        });
+        if (finalizada == null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Consulte seus pedidos: a compra foi concluída ou o prazo da reserva terminou.");
+        }
+        return finalizada;
+    }
+
+    private void registrarFalhaCheckout(CheckoutPreparado preparado, boolean falhaDefinitiva) {
+        checkoutTransaction.executeWithoutResult(status -> {
+            entityManager.clear();
+            Pedido pedido = pedidoRepository.findWithItensForUpdateById(preparado.pedidoId()).orElseThrow();
+            TentativaPagamento tentativa = tentativaRepository.findById(preparado.tentativaId()).orElseThrow();
+            if (!"checkout_processing".equals(tentativa.getStatusProvedor())) return;
+            tentativa.setStatus(PedidoStatus.ERRO);
+            tentativa.setStatusProvedor(falhaDefinitiva ? "checkout_error" : "checkout_unknown");
+            if (pedido.getTentativaConcluida() == null && !pedido.isEstoqueBaixado()) {
+                pedido.setStatus(PedidoStatus.ERRO);
+                if (falhaDefinitiva) liberarSeSemTentativaAberta(pedido);
+            }
+        });
+    }
+
+    private ResponseStatusException checkoutEmConfirmacao() {
+        return new ResponseStatusException(HttpStatus.CONFLICT,
+                "Já existe uma solicitação para esta compra. Consulte Meus pedidos e aguarde a confirmação antes de tentar novamente.");
+    }
+
+    private ResponseStatusException estoqueIndisponivel() {
+        return new ResponseStatusException(HttpStatus.CONFLICT, "Estoque indisponível: outra compra pode ter reservado estas peças. Revise o carrinho.");
+    }
+
+    private ResponseStatusException reservaVencida() {
+        return new ResponseStatusException(HttpStatus.CONFLICT, "A reserva terminou. Acesse Meus pedidos para verificar a disponibilidade e tentar novamente.");
+    }
+
+    private String fingerprint(Cliente cliente, Carrinho carrinho, Pedido snapshot) {
+        Map<Long, BigDecimal> precos = new HashMap<>();
+        snapshot.getItens().forEach(item -> precos.put(item.getProdutoTamanho().getId(), item.getPrecoUnitario()));
+        StringBuilder base = new StringBuilder("v2:").append(cliente.getId()).append(':').append(carrinho.getId());
+        base.append(':').append(snapshot.getModalidade());
+        EnderecoEntrega endereco = snapshot.getEnderecoEntrega();
+        if (endereco != null) {
+            for (String campo : new String[]{endereco.destinatario(), endereco.cep(), endereco.rua(), endereco.numero(),
+                    endereco.complemento(), endereco.bairro(), endereco.cidade(), endereco.uf()}) {
+                String valor = campo == null ? "" : campo;
+                base.append('|').append(valor.length()).append(':').append(valor);
+            }
+        }
+        carrinho.getItens().stream().sorted(Comparator.comparing(ItemCarrinho::getId)).forEach(item -> base
+                .append('|').append(item.getId()).append(':').append(item.getProdutoTamanho().getId())
+                .append(':').append(item.getQuantidade()).append(':')
+                .append(precos.get(item.getProdutoTamanho().getId()).stripTrailingZeros().toPlainString()));
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                    .digest(base.toString().getBytes(StandardCharsets.UTF_8)));
+        } catch (java.security.NoSuchAlgorithmException exception) {
+            throw new IllegalStateException(exception);
         }
     }
 
-    private void registrarFalhaCheckout(Pedido pedido, TentativaPagamento tentativa) {
-        tentativa.setStatus(PedidoStatus.ERRO);
-        tentativa.setStatusProvedor("checkout_error");
-        pedido.setStatus(PedidoStatus.ERRO);
-        tentativaRepository.save(tentativa);
-        pedidoRepository.save(pedido);
-    }
+    private record CheckoutPreparado(Long pedidoId, Long tentativaId, Map<String, Object> preference,
+                                    CheckoutResponse resposta) {}
 
     private static class FalhaCheckoutException extends ResponseStatusException {
         FalhaCheckoutException(Exception cause) {
-            super(HttpStatus.BAD_GATEWAY, "Não foi possível criar o checkout no Mercado Pago. Consulte seus pedidos para tentar novamente.", cause);
+            super(HttpStatus.BAD_GATEWAY, "Não foi possível confirmar a criação do checkout. Consulte Meus pedidos antes de repetir o pagamento.", cause);
         }
     }
 
@@ -193,7 +322,7 @@ public class PagamentoService {
         Cliente cliente = buscarClienteAutenticado();
         Pedido pedido = pedidoRepository.findByIdAndClienteId(pedidoId, cliente.getId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Pedido não encontrado."));
-        return new PedidoStatusResponse(pedido.getId(), pedido.getStatus(), pedido.getTotal());
+        return new PedidoStatusResponse(pedido.getId(), pedido.getStatus(), pedido.getTotal(), pedido.getReservaStatus(), pedido.getReservaExpiraEm(), pedido.getModalidade(), pedido.getEnderecoEntrega());
     }
 
     @Transactional(readOnly = true)
@@ -205,7 +334,14 @@ public class PagamentoService {
                         pedido.getItens().stream()
                                 .map(item -> new ItemPedidoResponse(item.getNomeProduto(), item.getTamanho(),
                                         item.getQuantidade(), item.getPrecoUnitario()))
-                                .toList()))
+                                .toList(), pedido.getReservaStatus(), pedido.getReservaExpiraEm(), pedido.getModalidade(), pedido.getEnderecoEntrega()))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<PedidoStatusResponse> listarPendenciasEstoque() {
+        return pedidoRepository.findAllByStatusOrderByCriadoEmDesc(PedidoStatus.PAGO_EM_REVISAO).stream()
+                .map(p -> new PedidoStatusResponse(p.getId(), p.getStatus(), p.getTotal(), p.getReservaStatus(), p.getReservaExpiraEm(), p.getModalidade(), p.getEnderecoEntrega()))
                 .toList();
     }
 
@@ -276,15 +412,17 @@ public class PagamentoService {
             }
             tentativa.setPaymentId(paymentId);
         }
-        PedidoStatus novoStatus = mapearStatus(pagamento.status());
-        // Eventos tardios não reabrem um pagamento aprovado ou estornado.
-        if (tentativa.getStatus() == PedidoStatus.PAGO
-                && novoStatus != PedidoStatus.PAGO && novoStatus != PedidoStatus.CANCELADO) {
-            return;
+        PedidoStatus novoStatus = TransicoesPagamento.mapear(pagamento.status(), pagamento.statusDetail());
+        if (novoStatus == null) {
+            log.error("Estado desconhecido do provedor: pedido={}, pagamento={}, status={}", pedidoId, paymentId, pagamento.status());
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Estado de pagamento desconhecido; requer conciliação.");
         }
-        if (tentativa.getStatus() == PedidoStatus.CANCELADO && novoStatus != PedidoStatus.CANCELADO) return;
+        if (!TransicoesPagamento.permite(tentativa.getStatus(), novoStatus,
+                tentativa.getAtualizadoProvedorEm(), pagamento.dateLastUpdated())) return;
         tentativa.setStatus(novoStatus);
         tentativa.setStatusProvedor(pagamento.status());
+        tentativa.setDetalheStatusProvedor(pagamento.statusDetail());
+        if (pagamento.dateLastUpdated() != null) tentativa.setAtualizadoProvedorEm(pagamento.dateLastUpdated());
         tentativaRepository.saveAndFlush(tentativa);
         TentativaPagamento concluida = pedido.getTentativaConcluida();
         if (concluida != null) {
@@ -293,24 +431,38 @@ public class PagamentoService {
                 return;
             }
             // Apenas a tentativa vencedora pode atualizar o estado financeiro após a conclusão.
-            if (novoStatus == PedidoStatus.CANCELADO) pedido.setStatus(PedidoStatus.CANCELADO);
+            if (novoStatus != PedidoStatus.PAGO) pedido.setStatus(novoStatus);
+            else pedido.setStatus(pedido.isEstoqueBaixado() ? PedidoStatus.PAGO : PedidoStatus.PAGO_EM_REVISAO);
             pedido.setMercadoPagoStatus(pagamento.status());
             return;
         }
         if (novoStatus == PedidoStatus.PAGO && !pedido.isEstoqueBaixado()) {
-            baixarEstoque(pedido);
-            removerItensPagosDoCarrinho(pedido);
-            pedido.setEstoqueBaixado(true);
+            boolean estoqueConfirmado = reservas.consumir(pedido);
+            if (estoqueConfirmado) {
+                removerItensPagosDoCarrinho(pedido);
+                pedido.setEstoqueBaixado(true);
+            } else {
+                log.error("Pagamento aprovado exige conciliação de estoque: pedido={}, pagamento={}", pedidoId, paymentId);
+            }
             pedido.setTentativaConcluida(tentativa);
             pedido.setMercadoPagoPaymentId(paymentId);
             pedido.setMercadoPagoStatus(pagamento.status());
-            pedido.setStatus(PedidoStatus.PAGO);
+            pedido.setStatus(estoqueConfirmado ? PedidoStatus.PAGO : PedidoStatus.PAGO_EM_REVISAO);
+        } else if (Set.of(PedidoStatus.REEMBOLSADO, PedidoStatus.REEMBOLSADO_PARCIAL,
+                PedidoStatus.CHARGEBACK, PedidoStatus.EM_MEDIACAO).contains(novoStatus)) {
+            // A consulta pode já mostrar um evento pós-aprovação. Não presumir entrega.
+            pedido.setTentativaConcluida(tentativa);
+            pedido.setMercadoPagoPaymentId(paymentId);
+            pedido.setMercadoPagoStatus(pagamento.status());
+            pedido.setStatus(novoStatus);
+            reservas.liberar(pedido);
         } else {
             List<TentativaPagamento> todas = tentativaRepository.findAllByPedidoIdOrderByIdDesc(pedidoId);
             // Uma recusa antiga não substitui uma tentativa nova ou pendente.
             PedidoStatus resumo = todas.stream().anyMatch(t -> t.getStatus() == PedidoStatus.PENDENTE)
                     ? PedidoStatus.PENDENTE : todas.get(0).getStatus();
             pedido.setStatus(resumo);
+            liberarSeSemTentativaAberta(pedido);
         }
         pedidoRepository.save(pedido);
     }
@@ -323,7 +475,8 @@ public class PagamentoService {
         legada.setPaymentId(pedido.getMercadoPagoPaymentId());
         legada.setPreferenceId(pedido.getMercadoPagoPreferenceId());
         legada.setStatusProvedor(pedido.getMercadoPagoStatus());
-        legada.setStatus(pedido.getStatus());
+        PedidoStatus financeiro = TransicoesPagamento.mapear(pedido.getMercadoPagoStatus(), null);
+        legada.setStatus(financeiro == null ? pedido.getStatus() : financeiro);
         tentativaRepository.saveAndFlush(legada);
         if (pedido.isEstoqueBaixado() || pedido.getStatus() == PedidoStatus.PAGO) {
             pedido.setTentativaConcluida(legada);
@@ -377,14 +530,11 @@ public class PagamentoService {
         return itens;
     }
 
-    private void baixarEstoque(Pedido pedido) {
-        for (ItemPedido item : pedido.getItens().stream()
-                .sorted(Comparator.comparing(i -> i.getProdutoTamanho().getId())).toList()) {
-            if (tamanhoRepository.baixarSeDisponivel(item.getProdutoTamanho().getId(), item.getQuantidade()) != 1) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT,
-                        "Estoque insuficiente para confirmar " + item.getNomeProduto() + ".");
-            }
-        }
+    private void liberarSeSemTentativaAberta(Pedido pedido) {
+        boolean aberta = tentativaRepository.findAllByPedidoIdOrderByIdDesc(pedido.getId()).stream().anyMatch(t ->
+                t.getStatus() == PedidoStatus.PENDENTE || t.getStatus() == PedidoStatus.AGUARDANDO_PAGAMENTO
+                || "checkout_unknown".equals(t.getStatusProvedor()) || "checkout_processing".equals(t.getStatusProvedor()));
+        if (!aberta && pedido.getTentativaConcluida() == null) reservas.liberar(pedido);
     }
 
     private void removerItensPagosDoCarrinho(Pedido pedido) {
@@ -442,17 +592,6 @@ public class PagamentoService {
         }
     }
 
-    private PedidoStatus mapearStatus(String status) {
-        if (status == null) return PedidoStatus.ERRO;
-        return switch (status) {
-            case "approved" -> PedidoStatus.PAGO;
-            case "pending", "in_process", "in_mediation", "authorized" -> PedidoStatus.PENDENTE;
-            case "rejected" -> PedidoStatus.RECUSADO;
-            case "cancelled", "refunded", "charged_back" -> PedidoStatus.CANCELADO;
-            default -> PedidoStatus.ERRO;
-        };
-    }
-
     public String urlFrontendRetorno(Long pedidoId, String resultado) {
         String resultadoSeguro = switch (resultado) {
             case "sucesso", "pendente", "falha" -> resultado;
@@ -488,6 +627,8 @@ public class PagamentoService {
     private record PreferenciaResponse(String id, @JsonProperty("init_point") String initPoint,
                                        @JsonProperty("sandbox_init_point") String sandboxInitPoint) {}
     private record PagamentoResponse(Long id, String status,
+                                     @JsonProperty("status_detail") String statusDetail,
+                                     @JsonProperty("date_last_updated") java.time.Instant dateLastUpdated,
                                      @JsonProperty("external_reference") String externalReference,
                                      @JsonProperty("currency_id") String currencyId,
                                      @JsonProperty("transaction_amount") BigDecimal transactionAmount) {}

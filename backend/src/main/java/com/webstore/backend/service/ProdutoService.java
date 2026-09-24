@@ -20,15 +20,18 @@ public class ProdutoService {
     private final ProdutoRepository produtoRepository;
     private final com.webstore.backend.repository.ProdutoTamanhoRepository produtoTamanhoRepository;
     private final com.webstore.backend.repository.ItemCarrinhoRepository itemCarrinhoRepository;
+    private final jakarta.persistence.EntityManager em;
 
     public ProdutoService(
             ProdutoRepository produtoRepository,
             com.webstore.backend.repository.ProdutoTamanhoRepository produtoTamanhoRepository,
-            com.webstore.backend.repository.ItemCarrinhoRepository itemCarrinhoRepository
+            com.webstore.backend.repository.ItemCarrinhoRepository itemCarrinhoRepository,
+            jakarta.persistence.EntityManager em
     ) {
         this.produtoRepository = produtoRepository;
         this.produtoTamanhoRepository = produtoTamanhoRepository;
         this.itemCarrinhoRepository = itemCarrinhoRepository;
+        this.em = em;
     }
 
     @Transactional(readOnly = true)
@@ -61,12 +64,17 @@ public class ProdutoService {
 
         Produto produto = buscarPorId(id);
         validarCodigoUnico(request.getCodigo(), produto.getId());
+        bloquearEstoque(produto);
         aplicarRequest(produto, request);
         return produtoRepository.save(produto);
     }
 
     public void excluir(Long id) {
         Produto produto = buscarPorId(id);
+        bloquearEstoque(produto);
+        if (produto.getTamanhos().stream().anyMatch(t -> t.getQuantidadeReservada() > 0)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Produto possui estoque reservado por pedidos.");
+        }
         itemCarrinhoRepository.deleteByProdutoTamanhoProdutoId(id);
         produtoRepository.delete(produto);
     }
@@ -106,6 +114,9 @@ public class ProdutoService {
                 pt.setProduto(produto);
                 pt.setTamanho(tamanho);
             }
+            if (quantidade < pt.getQuantidadeReservada()) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "O estoque físico não pode ser menor que as unidades reservadas.");
+            }
             pt.setQuantidade(quantidade);
             pt.setAtivo(true);
             newList.add(pt);
@@ -113,6 +124,9 @@ public class ProdutoService {
 
         // Remove do carrinho variações que deixaram de existir antes do orphanRemoval.
         for (ProdutoTamanho removido : existing.values()) {
+            if (removido.getQuantidadeReservada() > 0) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Não é possível remover um tamanho com estoque reservado.");
+            }
             if (removido.getId() != null) {
                 itemCarrinhoRepository.deleteByProdutoTamanhoId(removido.getId());
             }
@@ -121,6 +135,11 @@ public class ProdutoService {
         // orphanRemoval will delete removed ones
         produto.getTamanhos().clear();
         produto.getTamanhos().addAll(newList);
+    }
+
+    private void bloquearEstoque(Produto produto) {
+        produto.getTamanhos().stream().sorted(java.util.Comparator.comparing(ProdutoTamanho::getId))
+                .forEach(t -> em.refresh(t, jakarta.persistence.LockModeType.PESSIMISTIC_WRITE));
     }
 
     private void validarRequest(ProdutoRequest request) {

@@ -32,8 +32,8 @@ public class PagamentoController {
 
     @PostMapping("/checkout")
     @PreAuthorize("hasRole('CLIENTE')")
-    public CheckoutResponse criarCheckout() {
-        return pagamentoService.criarCheckout();
+    public CheckoutResponse criarCheckout(@RequestBody com.webstore.backend.controller.dto.CheckoutRequest request) {
+        return pagamentoService.criarCheckout(request);
     }
 
     @PostMapping("/pedidos/{pedidoId}/tentativas")
