@@ -44,8 +44,20 @@ public class DatabaseSchemaUpdater {
                     // Hibernate update não amplia CHECKs de enums já existentes.
                     statement.executeUpdate("ALTER TABLE pedidos DROP CONSTRAINT IF EXISTS pedidos_status_check");
                     statement.executeUpdate("ALTER TABLE pedidos ADD CONSTRAINT pedidos_status_check CHECK (status IN (" + orderStatuses + "))");
+                    statement.executeUpdate("ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS status_entrega varchar(32) DEFAULT 'RECEBIDO'");
+                    statement.executeUpdate("UPDATE pedidos SET status_entrega = CASE status_entrega WHEN 'AGUARDANDO_PROCESSAMENTO' THEN 'RECEBIDO' WHEN 'SEPARANDO' THEN 'EM_SEPARACAO' WHEN 'EM_TRANSITO' THEN 'ENVIADO' WHEN 'CANCELADA' THEN 'CANCELADO' ELSE status_entrega END WHERE status_entrega IS NULL OR status_entrega IN ('AGUARDANDO_PROCESSAMENTO','SEPARANDO','EM_TRANSITO','CANCELADA')");
+                    statement.executeUpdate("ALTER TABLE pedidos ALTER COLUMN status_entrega SET DEFAULT 'RECEBIDO'");
+                    statement.executeUpdate("ALTER TABLE pedidos ALTER COLUMN status_entrega SET NOT NULL");
                     statement.executeUpdate("ALTER TABLE pedidos DROP CONSTRAINT IF EXISTS ck_pedido_recebimento");
                     statement.executeUpdate("ALTER TABLE pedidos ADD CONSTRAINT ck_pedido_recebimento CHECK (" + com.webstore.backend.model.Pedido.RECEBIMENTO_CONSTRAINT + ")");
+                    statement.executeUpdate("ALTER TABLE pedidos DROP CONSTRAINT IF EXISTS ck_pedido_total_frete");
+                    statement.executeUpdate("ALTER TABLE pedidos ADD CONSTRAINT ck_pedido_total_frete CHECK ("
+                            + "(valor_frete IS NULL AND subtotal_mercadorias IS NULL AND cotacao_frete_id IS NULL) OR "
+                            + "(valor_frete IS NOT NULL AND subtotal_mercadorias IS NOT NULL AND cotacao_frete_id IS NOT NULL "
+                            + "AND valor_frete >= 0 AND subtotal_mercadorias >= 0 AND total = subtotal_mercadorias + valor_frete "
+                            + "AND prazo_frete IS NOT NULL AND modalidade IS NOT NULL "
+                            + "AND (modalidade <> 'RETIRADA' OR valor_frete = 0) "
+                            + "AND (modalidade <> 'ENTREGA' OR (prazo_frete_dias_uteis IS NOT NULL AND prazo_frete_dias_uteis >= 0))))");
                     statement.executeUpdate("ALTER TABLE tentativas_pagamento DROP CONSTRAINT IF EXISTS tentativas_pagamento_status_check");
                     statement.executeUpdate("ALTER TABLE tentativas_pagamento ADD CONSTRAINT tentativas_pagamento_status_check CHECK (status IN (" + orderStatuses + "))");
                     statement.executeUpdate("UPDATE tentativas_pagamento SET status = CASE status_provedor WHEN 'refunded' THEN 'REEMBOLSADO' WHEN 'charged_back' THEN 'CHARGEBACK' END WHERE status = 'CANCELADO' AND status_provedor IN ('refunded', 'charged_back')");

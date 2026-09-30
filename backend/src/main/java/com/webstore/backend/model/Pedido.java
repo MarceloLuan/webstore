@@ -49,8 +49,26 @@ public class Pedido {
     @Column(nullable = false, length = 30)
     private PedidoStatus status = PedidoStatus.AGUARDANDO_PAGAMENTO;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status_entrega", nullable = true, length = 32, columnDefinition = "varchar(32) default 'RECEBIDO'")
+    private StatusEntrega statusEntrega = StatusEntrega.RECEBIDO;
+    @Column(name = "codigo_rastreio", length = 80)
+    private String codigoRastreio;
+
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal total;
+    @Column(precision = 12, scale = 2, updatable = false)
+    private BigDecimal subtotalMercadorias;
+    @Column(precision = 12, scale = 2, updatable = false)
+    private BigDecimal valorFrete;
+    @Column(updatable = false)
+    private Integer prazoFreteDiasUteis;
+    @Column(length = 200, updatable = false)
+    private String prazoFrete;
+    @Column(length = 60, updatable = false)
+    private String origemFrete;
+    @Column(updatable = false)
+    private java.util.UUID cotacaoFreteId;
 
     // SHA-256 do cliente e snapshot do carrinho; nulo para pedidos anteriores.
     @Column(name = "checkout_fingerprint", unique = true, length = 64)
@@ -120,8 +138,28 @@ public class Pedido {
     public Cliente getCliente() { return cliente; }
     public void setCliente(Cliente cliente) { this.cliente = cliente; }
     public PedidoStatus getStatus() { return status; }
+    public StatusEntrega getStatusEntrega() { return statusEntrega; }
+    public void setStatusEntrega(StatusEntrega value) { statusEntrega = value; }
+    public String getCodigoRastreio() { return codigoRastreio; }
+    public void setCodigoRastreio(String value) { codigoRastreio = value; }
     public void setStatus(PedidoStatus status) { this.status = status; }
     public BigDecimal getTotal() { return total; }
+    public BigDecimal getSubtotalMercadorias() { return subtotalMercadorias; }
+    public BigDecimal getValorFrete() { return valorFrete; }
+    public Integer getPrazoFreteDiasUteis() { return prazoFreteDiasUteis; }
+    public String getPrazoFrete() { return prazoFrete; }
+    public java.util.UUID getCotacaoFreteId() { return cotacaoFreteId; }
+    public void definirFrete(CotacaoFrete cotacao) {
+        if (id != null) throw new IllegalStateException("O frete do pedido não pode ser alterado.");
+        if (total.compareTo(cotacao.getMercadorias()) != 0 || modalidade != cotacao.getModalidade()) throw new IllegalArgumentException("Cotação divergente do pedido.");
+        subtotalMercadorias = total;
+        valorFrete = cotacao.getValor();
+        prazoFreteDiasUteis = cotacao.getDiasUteis();
+        prazoFrete = cotacao.getPrazo();
+        origemFrete = cotacao.getOrigem();
+        cotacaoFreteId = cotacao.getId();
+        total = subtotalMercadorias.add(valorFrete);
+    }
     public ReservaStatus getReservaStatus() { return reservaStatus; }
     public void setReservaStatus(ReservaStatus value) { reservaStatus = value; }
     public java.time.Instant getReservaExpiraEm() { return reservaExpiraEm; }

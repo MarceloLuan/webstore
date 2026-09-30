@@ -5,7 +5,7 @@ import ProdutoImagem from '@/components/produtos/ProdutoImagem.vue'
 import RetiradaInfo from '@/components/RetiradaInfo.vue'
 import { useCartStore } from '@/stores/cartStore'
 import { formatCurrency } from '@/utils/currency'
-import { buscarPedido, criarCheckout } from '@/services/clienteApi'
+import { buscarPedido, criarCheckout, cotarFrete } from '@/services/clienteApi'
 
 const route = useRoute()
 
@@ -27,6 +27,9 @@ const checkingOut = ref(false)
 const paymentFeedback = ref('')
 const paymentFeedbackType = ref('')
 const modalidade = ref('')
+const cotacao = ref(null)
+const cotando = ref(false)
+let versaoCotacao = 0
 const endereco = ref({ destinatario: '', cep: '', rua: '', numero: '', complemento: '', bairro: '', cidade: '', uf: '' })
 const ufs = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO']
 const camposEndereco = [
@@ -39,12 +42,11 @@ const camposEndereco = [
   { nome: 'cidade', label: 'Cidade', max: 100, autocomplete: 'shipping address-level2' },
 ]
 
-async function checkout() {
-  if (checkingOut.value || loading.value || busyItemId.value !== null || clearing.value) return
+function recebimentoValidado() {
   feedback.value = ''
   if (!['ENTREGA', 'RETIRADA'].includes(modalidade.value)) {
     feedback.value = 'Selecione entrega ou retirada.'
-    return
+    return null
   }
   const destino = Object.fromEntries(Object.entries(endereco.value).map(([campo, valor]) => [campo, valor.trim()]))
   if (modalidade.value === 'ENTREGA') {
@@ -52,26 +54,65 @@ async function checkout() {
       (campo.nome !== 'complemento' && !destino[campo.nome]) || destino[campo.nome].length > campo.max)
     if (invalido) {
       feedback.value = `Preencha corretamente: ${invalido.label}.`
-      return
+      return null
     }
     if (!/^[0-9]{5}-?[0-9]{3}$/.test(destino.cep) || destino.cep.replace('-', '') === '00000000' || !ufs.includes(destino.uf)) {
       feedback.value = 'Confira o CEP (8 dígitos) e a UF.'
-      return
+      return null
     }
+  }
+  return { modalidade: modalidade.value, endereco: modalidade.value === 'ENTREGA' ? destino : null }
+}
+
+watch([modalidade, endereco, () => cart.value.itens], () => {
+  cotacao.value = null
+  versaoCotacao++
+}, { deep: true, flush: 'sync' })
+
+async function calcularFrete() {
+  if (checkingOut.value || cotando.value || loading.value || busyItemId.value !== null || clearing.value) return
+  const recebimento = recebimentoValidado()
+  if (!recebimento) return
+  const versao = ++versaoCotacao
+  cotando.value = true
+  cotacao.value = null
+  try {
+    const resultado = await cotarFrete(recebimento)
+    if (versao === versaoCotacao) cotacao.value = resultado
+  } catch (erro) {
+    if (versao === versaoCotacao) feedback.value = erro.message || 'Não foi possível calcular o frete. Tente novamente.'
+  } finally {
+    cotando.value = false
+  }
+}
+
+async function checkout() {
+  if (checkingOut.value || cotando.value || loading.value || busyItemId.value !== null || clearing.value) return
+  const recebimento = recebimentoValidado()
+  if (!recebimento) return
+  if (!cotacao.value || new Date(cotacao.value.expiraEm).getTime() <= Date.now()) {
+    cotacao.value = null
+    feedback.value = 'Calcule novamente e confira o total antes de pagar.'
+    return
   }
   checkingOut.value = true
   feedback.value = ''
   try {
-    const response = await criarCheckout({ modalidade: modalidade.value, endereco: modalidade.value === 'ENTREGA' ? destino : null })
+    const response = await criarCheckout({ ...recebimento, cotacaoId: cotacao.value.id })
     window.location.assign(response.checkoutUrl)
   } catch (checkoutError) {
     feedback.value = checkoutError.message || 'Não foi possível abrir o Mercado Pago.'
+    if (checkoutError.code?.startsWith('COTACAO_')) cotacao.value = null
     checkingOut.value = false
   }
 }
 
 function restoreCheckout(event) {
-  if (event.persisted) checkingOut.value = false
+  if (event.persisted) {
+    checkingOut.value = false
+    cotacao.value = null
+    versaoCotacao++
+  }
 }
 
 onMounted(() => window.addEventListener('pageshow', restoreCheckout))
@@ -156,7 +197,7 @@ onMounted(async () => {
       const messages = {
         PAGO: ['Pagamento confirmado! Seu pedido foi aprovado.', 'success'],
         PAGO_EM_REVISAO: ['Pagamento recebido, mas o estoque precisa de revisão. A loja verificará a disponibilidade ou o reembolso. Não pague novamente.', 'pending'],
-        PENDENTE: ['Pagamento pendente. Avisaremos quando houver confirmação.', 'pending'],
+        PENDENTE: ['Pagamento pendente. Consulte o status em Meus pedidos.', 'pending'],
         AGUARDANDO_PAGAMENTO: ['Estamos aguardando a confirmação do Mercado Pago.', 'pending'],
         RECUSADO: ['O pagamento foi recusado. Você pode tentar novamente.', 'error'],
         CANCELADO: ['O pagamento foi cancelado.', 'error'],
@@ -303,30 +344,34 @@ onMounted(async () => {
           </div>
           <div>
             <dt>Subtotal</dt>
-            <dd>{{ formatCurrency(cart.subtotal) }}</dd>
+            <dd>{{ formatCurrency(cotacao?.mercadorias ?? cart.subtotal) }}</dd>
           </div>
           <div>
             <dt>Frete</dt>
-            <dd>{{ modalidade === 'RETIRADA' ? 'Retirada' : 'Não incluído nesta etapa' }}</dd>
+            <dd>{{ cotacao ? formatCurrency(cotacao.valorFrete) : 'A calcular' }}</dd>
           </div>
         </dl>
 
         <div class="summary-total">
-          <span>Total parcial</span>
-          <strong>{{ formatCurrency(cart.subtotal) }}</strong>
+          <span>Total a pagar</span>
+          <strong>{{ cotacao ? formatCurrency(cotacao.total) : 'Calcule para conferir' }}</strong>
         </div>
 
-        <form id="recebimento" class="delivery-form" @submit.prevent="checkout">
-          <fieldset :disabled="checkingOut">
-            <legend>Como deseja receber?</legend>
-            <label for="modalidade">Modalidade</label>
-            <select id="modalidade" v-model="modalidade" required>
-              <option disabled value="">Selecione</option>
-              <option value="ENTREGA">Entrega</option>
-              <option value="RETIRADA">Retirada na loja</option>
-            </select>
-            <template v-if="modalidade === 'ENTREGA'">
-              <p>Informe o endereço desta compra. O frete ainda não é calculado nem incluído no pagamento.</p>
+      </aside>
+    </div>
+    <section class="delivery-panel" aria-labelledby="delivery-heading">
+      <div class="delivery-heading"><p class="panel-kicker">Recebimento</p><h2 id="delivery-heading">Onde deseja receber seu pedido?</h2></div>
+      <form id="recebimento" class="delivery-form" @submit.prevent="calcularFrete">
+        <fieldset :disabled="checkingOut">
+          <label for="modalidade">Modalidade</label>
+          <select id="modalidade" v-model="modalidade" required>
+            <option disabled value="">Selecione</option>
+            <option value="ENTREGA">Entrega</option>
+            <option value="RETIRADA">Retirada na loja</option>
+          </select>
+          <template v-if="modalidade === 'ENTREGA'">
+            <p>Informe o endereço para consultar disponibilidade, frete e prazo antes de pagar.</p>
+            <div class="address-fields">
               <div v-for="campo in camposEndereco" :key="campo.nome" class="delivery-field">
                 <label :for="`entrega-${campo.nome}`">{{ campo.label }}</label>
                 <input :id="`entrega-${campo.nome}`" v-model="endereco[campo.nome]" :name="campo.nome"
@@ -334,41 +379,33 @@ onMounted(async () => {
                   :pattern="campo.nome === 'cep' ? '[0-9]{5}-?[0-9]{3}' : undefined"
                   :inputmode="campo.nome === 'cep' ? 'numeric' : 'text'" />
               </div>
-              <label for="entrega-uf">UF</label>
-              <select id="entrega-uf" v-model="endereco.uf" required autocomplete="shipping address-level1">
-                <option disabled value="">Selecione a UF</option>
-                <option v-for="uf in ufs" :key="uf" :value="uf">{{ uf }}</option>
-              </select>
-            </template>
-          </fieldset>
-        </form>
-        <RetiradaInfo v-if="modalidade === 'RETIRADA'" />
-        <section v-else-if="modalidade === 'ENTREGA'" class="destination-summary" aria-label="Resumo do endereço de entrega">
-          <strong>Entrega no endereço informado</strong>
-          <p>{{ endereco.destinatario.trim() || 'Informe o destinatário' }}</p>
-          <p>{{ endereco.rua.trim() || 'Rua' }}, {{ endereco.numero.trim() || 'número' }}</p>
-          <p v-if="endereco.complemento.trim()">{{ endereco.complemento.trim() }}</p>
-          <p>{{ endereco.bairro.trim() || 'Bairro' }} · {{ endereco.cidade.trim() || 'Cidade' }}/{{ endereco.uf || 'UF' }}</p>
-          <p>CEP {{ endereco.cep.trim() || 'não informado' }}</p>
-          <small>Confira os dados antes de pagar. Este endereço ficará registrado no pedido.</small>
-        </section>
-        <p v-else class="delivery-hint">Escolha uma modalidade para continuar para o pagamento.</p>
-        <p v-if="feedback" class="feedback" role="alert">{{ feedback }}</p>
-        <button form="recebimento" class="checkout-button" type="submit" :disabled="!['ENTREGA', 'RETIRADA'].includes(modalidade) || checkingOut || loading || busyItemId !== null || clearing" :aria-busy="checkingOut">
-          {{ checkingOut ? 'Abrindo Mercado Pago...' : 'Finalizar com Mercado Pago' }}
-        </button>
-        <small>As peças são reservadas por tempo limitado ao abrir o pagamento. Consulte o prazo em Meus pedidos.</small>
-      </aside>
-    </div>
+              <div class="delivery-field"><label for="entrega-uf">UF</label><select id="entrega-uf" v-model="endereco.uf" required autocomplete="shipping address-level1"><option disabled value="">Selecione a UF</option><option v-for="uf in ufs" :key="uf" :value="uf">{{ uf }}</option></select></div>
+            </div>
+          </template>
+        </fieldset>
+      </form>
+      <RetiradaInfo v-if="modalidade === 'RETIRADA'" />
+      <section v-else-if="modalidade === 'ENTREGA'" class="destination-summary" aria-label="Resumo do endereço de entrega">
+        <strong>Entrega no endereço informado</strong><p>{{ endereco.destinatario.trim() || 'Informe o destinatário' }}</p><p>{{ endereco.rua.trim() || 'Rua' }}, {{ endereco.numero.trim() || 'número' }}</p><p v-if="endereco.complemento.trim()">{{ endereco.complemento.trim() }}</p><p>{{ endereco.bairro.trim() || 'Bairro' }} · {{ endereco.cidade.trim() || 'Cidade' }}/{{ endereco.uf || 'UF' }}</p><p>CEP {{ endereco.cep.trim() || 'não informado' }}</p><small>Confira os dados antes de pagar. Este endereço ficará registrado no pedido.</small>
+      </section>
+      <p v-else class="delivery-hint">Escolha uma modalidade para continuar para o pagamento.</p>
+      <button form="recebimento" type="submit" class="quote-button" :disabled="!['ENTREGA', 'RETIRADA'].includes(modalidade) || checkingOut || cotando || loading || busyItemId !== null || clearing">{{ cotando ? 'Calculando...' : cotacao ? 'Recalcular total' : 'Calcular e conferir total' }}</button>
+      <div v-if="cotacao" class="destination-summary" role="status"><strong>{{ modalidade === 'RETIRADA' ? 'Retirada sem frete' : `Frete: ${formatCurrency(cotacao.valorFrete)}` }}</strong><p>{{ cotacao.prazo }}</p><p>Total a pagar: {{ formatCurrency(cotacao.total) }}</p><small>Cotação válida até {{ new Date(cotacao.expiraEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) }}.</small></div>
+      <p v-if="feedback" class="feedback" role="alert">{{ feedback }}</p>
+      <button class="checkout-button" type="button" :disabled="!cotacao || cotando || checkingOut || loading || busyItemId !== null || clearing" :aria-busy="checkingOut" @click="checkout">{{ checkingOut ? 'Abrindo Mercado Pago...' : 'Finalizar com Mercado Pago' }}</button>
+      <small>As peças são reservadas por tempo limitado ao abrir o pagamento. Consulte o prazo em Meus pedidos.</small>
+    </section>
   </section>
 </template>
 
 <style scoped>
+.quote-button { min-height: 44px; border: 1px solid #7d2032; border-radius: 999px; padding: 0.7rem; background: #faf5f3; color: #5b1a26; font: inherit; font-weight: 600; cursor: pointer; }
+.quote-button:disabled { opacity: 0.6; cursor: default; }
+.quote-button:focus-visible { outline: 2px solid #7d2032; outline-offset: 3px; }
 .destination-summary { padding: 1rem; border: 1px solid #e3d5d8; border-radius: 12px; color: #5b1a26; background: #faf5f3; line-height: 1.5; overflow-wrap: anywhere; }
 .destination-summary p { margin: 0.3rem 0; }
 .destination-summary small, .delivery-hint { color: #786b6f; line-height: 1.5; }
-.delivery-form fieldset { display: grid; gap: 0.65rem; min-width: 0; margin: 0; padding: 0; border: 0; }
-.delivery-form legend { margin-bottom: 0.8rem; color: #5b1a26; font-weight: 700; }
+.delivery-panel { display: grid; gap: 1rem; padding: 1.15rem; border: 1px solid rgba(106, 27, 44, 0.09); border-radius: 22px; background: #fff; box-shadow: 0 16px 38px rgba(106, 27, 44, 0.07); }.delivery-heading h2 { margin: 0; }.delivery-form fieldset { display: grid; gap: 0.65rem; min-width: 0; margin: 0; padding: 0; border: 0; }.address-fields { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .8rem; }.address-fields .delivery-field:first-child, .address-fields .delivery-field:nth-child(3), .address-fields .delivery-field:nth-child(6), .address-fields .delivery-field:nth-child(7) { grid-column: span 2; }
 .delivery-form label { color: #66565a; font-size: 0.88rem; }
 .delivery-form p { color: #786b6f; font-size: 0.85rem; line-height: 1.5; }
 .delivery-field { display: grid; gap: 0.3rem; }
@@ -768,5 +805,6 @@ h2 {
     grid-column: 2;
     justify-items: start;
   }
+  .address-fields { grid-template-columns: 1fr; }.address-fields .delivery-field:first-child, .address-fields .delivery-field:nth-child(3), .address-fields .delivery-field:nth-child(6), .address-fields .delivery-field:nth-child(7) { grid-column: auto; }
 }
 </style>

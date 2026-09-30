@@ -7,6 +7,7 @@ import ProdutosCrudView from '@/views/ProdutosCrudView.vue'
 import ProdutoDetalhesView from '@/views/ProdutoDetalhesView.vue'
 import CarrinhoView from '@/views/CarrinhoView.vue'
 import MeusPedidosView from '@/views/MeusPedidosView.vue'
+import PedidosAdminView from '@/views/PedidosAdminView.vue'
 import { getUser, isAuthenticated } from '@/services/auth'
 
 const router = createRouter({
@@ -47,6 +48,12 @@ const router = createRouter({
         requiresAuth: true,
         roles: ['ADMIN'],
       },
+    },
+    {
+      path: '/pedidos',
+      name: 'pedidos-admin',
+      component: PedidosAdminView,
+      meta: { requiresAuth: true, roles: ['ADMIN'] },
     },
     {
       path: '/produtos/:id',

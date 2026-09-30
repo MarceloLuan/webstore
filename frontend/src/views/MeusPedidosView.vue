@@ -7,6 +7,7 @@ import { formatCurrency } from '@/utils/currency'
 
 const pedidos = ref([])
 const loading = ref(true)
+const refreshing = ref(false)
 const error = ref('')
 const retrying = ref(null)
 const retryError = ref('')
@@ -44,22 +45,42 @@ function formatDate(value) {
   return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
 }
 
-onMounted(async () => {
+const entregaInfo = {
+  RECEBIDO: ['Recebido', 'waiting'],
+  EM_SEPARACAO: ['Em separação', 'waiting'],
+  PRONTO_PARA_RETIRADA: ['Pronto para retirada', 'ready'],
+  ENVIADO: ['Enviado', 'sent'],
+  ENTREGUE: ['Entregue', 'paid'],
+  CANCELADO: ['Cancelado', 'failed'],
+}
+
+async function carregarPedidos({ initial = false } = {}) {
+  if (initial) loading.value = true
+  else refreshing.value = true
+  error.value = ''
   try {
     pedidos.value = await listarMeusPedidos()
   } catch (requestError) {
     error.value = requestError.message || 'Não foi possível carregar seus pedidos.'
   } finally {
-    loading.value = false
+    if (initial) loading.value = false
+    else refreshing.value = false
   }
-})
+}
+
+onMounted(() => carregarPedidos({ initial: true }))
 </script>
 
 <template>
   <section class="orders-page">
     <header class="orders-header">
       <div><p>Histórico de compras</p><h1>Meus pedidos</h1></div>
-      <RouterLink to="/home">Continuar comprando</RouterLink>
+      <div class="header-actions">
+        <button type="button" :disabled="refreshing" @click="carregarPedidos()">
+          {{ refreshing ? 'Atualizando...' : 'Atualizar' }}
+        </button>
+        <RouterLink to="/home">Continuar comprando</RouterLink>
+      </div>
     </header>
 
     <p v-if="retryError" class="state-card error" role="alert">{{ retryError }}</p>
@@ -75,19 +96,35 @@ onMounted(async () => {
         <header>
           <div><small>Pedido</small><strong>#{{ pedido.id }}</strong></div>
           <div><small>Realizado em</small><span>{{ formatDate(pedido.criadoEm) }}</span></div>
-          <span class="status" :class="`status--${(statusInfo[pedido.status] || statusInfo.ERRO)[1]}`">
-            {{ (statusInfo[pedido.status] || statusInfo.ERRO)[0] }}
-          </span>
+          <div class="status-stack">
+            <small>Situação do pagamento</small>
+            <span class="status" :class="`status--${(statusInfo[pedido.status] || statusInfo.ERRO)[1]}`">{{ (statusInfo[pedido.status] || statusInfo.ERRO)[0] }}</span>
+          </div>
         </header>
-        <div v-if="pedido.modalidade === 'ENTREGA' && pedido.enderecoEntrega" class="stock-notice">
-          <strong>Entrega para {{ pedido.enderecoEntrega.destinatario }}</strong><br />
-          {{ pedido.enderecoEntrega.rua }}, {{ pedido.enderecoEntrega.numero }}
-          <template v-if="pedido.enderecoEntrega.complemento"> — {{ pedido.enderecoEntrega.complemento }}</template><br />
-          {{ pedido.enderecoEntrega.bairro }} · {{ pedido.enderecoEntrega.cidade }}/{{ pedido.enderecoEntrega.uf }}<br />
-          CEP {{ pedido.enderecoEntrega.cep }}
+        <div class="order-details">
+          <section class="detail-block">
+            <small>Modalidade de entrega</small>
+            <strong>{{ pedido.modalidade === 'ENTREGA' ? 'Entrega' : pedido.modalidade === 'RETIRADA' ? 'Retirada na loja' : 'Não informada' }}</strong>
+            <div v-if="pedido.modalidade === 'ENTREGA' && pedido.enderecoEntrega" class="address">
+              <span>{{ pedido.enderecoEntrega.destinatario }}</span>
+              <span>{{ pedido.enderecoEntrega.rua }}, {{ pedido.enderecoEntrega.numero }}<template v-if="pedido.enderecoEntrega.complemento"> — {{ pedido.enderecoEntrega.complemento }}</template></span>
+              <span>{{ pedido.enderecoEntrega.bairro }} · {{ pedido.enderecoEntrega.cidade }}/{{ pedido.enderecoEntrega.uf }} · CEP {{ pedido.enderecoEntrega.cep }}</span>
+            </div>
+            <RetiradaInfo v-else-if="pedido.modalidade === 'RETIRADA'" />
+            <span v-else class="muted">Recebimento não informado neste pedido antigo.</span>
+          </section>
+          <section class="detail-block">
+            <small>Status da entrega</small>
+            <span class="status" :class="`status--${(entregaInfo[pedido.statusEntrega] || entregaInfo.RECEBIDO)[1]}`">{{ (entregaInfo[pedido.statusEntrega] || entregaInfo.RECEBIDO)[0] }}</span>
+            <span v-if="pedido.codigoRastreio" class="tracking">Código de rastreio: <strong>{{ pedido.codigoRastreio }}</strong></span>
+          </section>
+          <section class="detail-block">
+            <small>Frete</small>
+            <strong v-if="pedido.valorFrete != null">{{ formatCurrency(pedido.valorFrete) }}</strong>
+            <span v-else class="muted">Não registrado</span>
+            <span v-if="pedido.prazoFrete" class="muted">{{ pedido.prazoFrete }}</span>
+          </section>
         </div>
-        <RetiradaInfo v-else-if="pedido.modalidade === 'RETIRADA'" />
-        <p v-else class="stock-notice">Recebimento não informado neste pedido antigo.</p>
         <p v-if="pedido.status === 'PAGO_EM_REVISAO'" class="stock-notice" role="status">
           Recebemos o pagamento após a liberação da reserva ou sem estoque disponível. A loja precisa confirmar a disponibilidade ou providenciar o reembolso. Não faça outro pagamento.
         </p>
@@ -102,7 +139,7 @@ onMounted(async () => {
           </li>
         </ul>
         <footer>
-          <button v-if="pedido.modalidade && ['RECUSADO', 'EXPIRADO', 'ERRO', 'AGUARDANDO_PAGAMENTO'].includes(pedido.status)"
+          <button v-if="pedido.modalidade && pedido.valorFrete != null && ['RECUSADO', 'EXPIRADO', 'ERRO', 'AGUARDANDO_PAGAMENTO'].includes(pedido.status)"
             type="button" :disabled="retrying !== null" @click="tentarNovamente(pedido.id)">
             {{ retrying === pedido.id ? 'Abrindo pagamento...' : 'Tentar pagamento novamente' }}
           </button>
@@ -121,8 +158,15 @@ onMounted(async () => {
 .orders-header p { color: #8c6a4d; text-transform: uppercase; letter-spacing: .14em; font-size: .72rem; }
 .orders-header h1 { color: #5b1a26; font-family: Georgia, serif; }
 a { color: #6a1b2c; font-weight: 700; }
+.header-actions { display: flex; align-items: center; gap: .8rem; }
+.header-actions button { border: 1px solid #6a1b2c; border-radius: 999px; padding: .6rem .9rem; background: #fff; color: #6a1b2c; font: inherit; font-weight: 700; cursor: pointer; }
+.header-actions button:disabled { opacity: .6; cursor: wait; }
 .orders-list { display: grid; gap: .9rem; }
 .stock-notice { margin: 0; padding: 1rem 1.2rem; background: #fff4d8; color: #755713; font-size: .85rem; line-height: 1.5; }
+.order-details { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(150px, 1fr) minmax(120px, .7fr); gap: 1px; background: rgba(106,27,44,.1); }
+.detail-block { display: grid; align-content: start; gap: .45rem; padding: 1rem 1.2rem; background: #fff; color: #5b1a26; font-size: .86rem; line-height: 1.45; }
+.detail-block > small { color: #8c6a4d; text-transform: uppercase; letter-spacing: .08em; font-size: .67rem; font-weight: 800; }
+.address { display: grid; gap: .1rem; color: #65565a; }.muted { color: #786b6f; }.tracking { color: #65565a; }
 .order-card { overflow: hidden; }
 .order-card > header { padding: 1rem 1.2rem; background: #fffaf7; display: grid; grid-template-columns: 1fr 1.5fr auto; align-items: center; gap: 1rem; }
 .order-card header div { display: grid; gap: .2rem; }
@@ -131,6 +175,7 @@ small { color: #786b6f; }
 .status--paid { background: #e6f5ea; color: #24613a; }
 .status--pending, .status--waiting { background: #fff4d8; color: #755713; }
 .status--failed { background: #fde7e7; color: #8a1d1d; }
+.status--ready { background: #ede9fb; color: #54468b; }.status--sent { background: #e5f1f8; color: #1d5f7d; }.status-stack { display: grid; justify-items: end; gap: .25rem; }
 ul { list-style: none; margin: 0; padding: .5rem 1.2rem; }
 li { padding: .75rem 0; display: flex; justify-content: space-between; gap: 1rem; border-bottom: 1px solid rgba(106,27,44,.08); }
 li:last-child { border-bottom: 0; }
@@ -143,5 +188,5 @@ li > span:first-child { display: grid; gap: .2rem; }
 .order-card footer button:focus-visible { outline: 3px solid #c9aa73; outline-offset: 3px; }
 .state-card { padding: 2rem; text-align: center; color: #65565a; }
 .error { color: #8a1d1d; }
-@media (max-width: 650px) { .orders-header { align-items: flex-start; flex-direction: column; } .order-card > header { grid-template-columns: 1fr; } }
+@media (max-width: 650px) { .orders-header { align-items: flex-start; flex-direction: column; } .order-card > header, .order-details { grid-template-columns: 1fr; } .status-stack { justify-items: start; } }
 </style>

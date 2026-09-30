@@ -41,6 +41,7 @@ public class PagamentoService {
     private final PedidoRepository pedidoRepository;
     private final TentativaPagamentoRepository tentativaRepository;
     private final ReservaEstoqueService reservas;
+    private final com.webstore.backend.service.frete.FreteService fretes;
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(PagamentoService.class);
     private final RestClient mercadoPagoClient;
     private final TransactionTemplate checkoutTransaction;
@@ -55,6 +56,7 @@ public class PagamentoService {
                             PedidoRepository pedidoRepository,
                             TentativaPagamentoRepository tentativaRepository,
                             ReservaEstoqueService reservas,
+                            com.webstore.backend.service.frete.FreteService fretes,
                             RestClient.Builder restClientBuilder,
                             PlatformTransactionManager transactionManager,
                             EntityManager entityManager,
@@ -67,6 +69,7 @@ public class PagamentoService {
         this.pedidoRepository = pedidoRepository;
         this.tentativaRepository = tentativaRepository;
         this.reservas = reservas;
+        this.fretes = fretes;
         this.mercadoPagoClient = restClientBuilder.baseUrl("https://api.mercadopago.com").build();
         this.checkoutTransaction = new TransactionTemplate(transactionManager);
         this.entityManager = entityManager;
@@ -81,10 +84,25 @@ public class PagamentoService {
         EnderecoEntrega endereco = request.validarEndereco();
         validarAccessToken();
         reservas.expirarVencidas();
-        return executarCheckout(checkoutTransaction.execute(status -> prepararCompra(request.modalidade(), endereco)));
+        return executarCheckout(checkoutTransaction.execute(status -> prepararCompra(request.modalidade(), endereco, request.cotacaoId())));
     }
 
-    private CheckoutPreparado prepararCompra(ModalidadeRecebimento modalidade, EnderecoEntrega endereco) {
+    public com.webstore.backend.controller.dto.CotacaoFreteResponse cotarFrete(CheckoutRequest request) {
+        if (request == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe a modalidade de recebimento.");
+        EnderecoEntrega endereco = request.validarEndereco();
+        CotacaoPreparada dados = checkoutTransaction.execute(status -> {
+            Cliente cliente = buscarClienteAutenticado();
+            Carrinho carrinho = carrinhoRepository.findByClienteId(cliente.getId()).orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "O carrinho está vazio."));
+            if (carrinho.getItens().isEmpty()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O carrinho está vazio.");
+            Pedido snapshot = criarPedido(cliente, carrinho);
+            snapshot.definirRecebimento(request.modalidade(), endereco);
+            return new CotacaoPreparada(snapshot, fingerprint(cliente, carrinho, snapshot));
+        });
+        return com.webstore.backend.controller.dto.CotacaoFreteResponse.from(fretes.cotar(dados.snapshot(), dados.fingerprint()));
+    }
+    private record CotacaoPreparada(Pedido snapshot, String fingerprint) {}
+
+    private CheckoutPreparado prepararCompra(ModalidadeRecebimento modalidade, EnderecoEntrega endereco, UUID cotacaoId) {
         Cliente cliente = buscarClienteAutenticado();
         // Serializa a decisão de criar/reutilizar entre abas e instâncias da aplicação.
         clienteRepository.findForCheckoutById(cliente.getId()).orElseThrow();
@@ -98,8 +116,13 @@ public class PagamentoService {
         pedido.definirRecebimento(modalidade, endereco);
         String fingerprint = fingerprint(cliente, carrinho, pedido);
         Optional<Long> existente = pedidoRepository.findIdByCheckoutFingerprint(fingerprint);
+        CotacaoFrete cotacao = fretes.validar(cotacaoId, cliente.getId(), fingerprint, existente.isPresent());
         if (existente.isPresent()) {
             Pedido anterior = pedidoRepository.findWithItensForUpdateById(existente.get()).orElseThrow();
+            if (anterior.getValorFrete() == null || anterior.getValorFrete().compareTo(cotacao.getValor()) != 0
+                    || !Objects.equals(anterior.getPrazoFrete(), cotacao.getPrazo())) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Já existe um pedido com outra cotação. Confira o total em Meus pedidos para retomá-lo.");
+            }
             if (anterior.isEstoqueBaixado() || anterior.getTentativaConcluida() != null
                     || anterior.getStatus() == PedidoStatus.PAGO || anterior.getStatus() == PedidoStatus.CANCELADO) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "Esta compra já foi encerrada. Consulte seus pedidos.");
@@ -114,6 +137,7 @@ public class PagamentoService {
                     new CheckoutResponse(tentativa.getCheckoutUrl(), tentativa.getPreferenceId(), anterior.getId()));
         }
         pedido.setCheckoutFingerprint(fingerprint);
+        pedido.definirFrete(cotacao);
         // Bloquear variações antes dos INSERTs de itens evita upgrades de FK locks no PostgreSQL.
         if (!reservas.reservar(pedido)) throw estoqueIndisponivel();
         pedidoRepository.saveAndFlush(pedido);
@@ -129,9 +153,9 @@ public class PagamentoService {
     private CheckoutPreparado prepararRetomada(Long pedidoId) {
         Pedido pedido = buscarPedidoDoClienteComLock(pedidoId);
         importarTentativaLegada(pedido);
-        if (pedido.getModalidade() == null) {
+        if (pedido.getModalidade() == null || pedido.getValorFrete() == null) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "Pedido antigo sem modalidade de recebimento. Consulte a loja antes de tentar um novo pagamento.");
+                    "Pedido antigo sem recebimento ou frete registrado. Consulte a loja antes de tentar um novo pagamento.");
         }
         if (pedido.isEstoqueBaixado() || pedido.getTentativaConcluida() != null
                 || pedido.getStatus() == PedidoStatus.PAGO || pedido.getStatus() == PedidoStatus.CANCELADO) {
@@ -322,7 +346,7 @@ public class PagamentoService {
         Cliente cliente = buscarClienteAutenticado();
         Pedido pedido = pedidoRepository.findByIdAndClienteId(pedidoId, cliente.getId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Pedido não encontrado."));
-        return new PedidoStatusResponse(pedido.getId(), pedido.getStatus(), pedido.getTotal(), pedido.getReservaStatus(), pedido.getReservaExpiraEm(), pedido.getModalidade(), pedido.getEnderecoEntrega());
+        return new PedidoStatusResponse(pedido.getId(), pedido.getStatus(), pedido.getTotal(), pedido.getReservaStatus(), pedido.getReservaExpiraEm(), pedido.getModalidade(), pedido.getEnderecoEntrega(), pedido.getSubtotalMercadorias(), pedido.getValorFrete(), pedido.getPrazoFreteDiasUteis(), pedido.getPrazoFrete(), pedido.getStatusEntrega(), pedido.getCodigoRastreio());
     }
 
     @Transactional(readOnly = true)
@@ -334,14 +358,14 @@ public class PagamentoService {
                         pedido.getItens().stream()
                                 .map(item -> new ItemPedidoResponse(item.getNomeProduto(), item.getTamanho(),
                                         item.getQuantidade(), item.getPrecoUnitario()))
-                                .toList(), pedido.getReservaStatus(), pedido.getReservaExpiraEm(), pedido.getModalidade(), pedido.getEnderecoEntrega()))
+                        .toList(), pedido.getReservaStatus(), pedido.getReservaExpiraEm(), pedido.getModalidade(), pedido.getEnderecoEntrega(), pedido.getSubtotalMercadorias(), pedido.getValorFrete(), pedido.getPrazoFreteDiasUteis(), pedido.getPrazoFrete(), pedido.getStatusEntrega(), pedido.getCodigoRastreio()))
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public List<PedidoStatusResponse> listarPendenciasEstoque() {
         return pedidoRepository.findAllByStatusOrderByCriadoEmDesc(PedidoStatus.PAGO_EM_REVISAO).stream()
-                .map(p -> new PedidoStatusResponse(p.getId(), p.getStatus(), p.getTotal(), p.getReservaStatus(), p.getReservaExpiraEm(), p.getModalidade(), p.getEnderecoEntrega()))
+                .map(p -> new PedidoStatusResponse(p.getId(), p.getStatus(), p.getTotal(), p.getReservaStatus(), p.getReservaExpiraEm(), p.getModalidade(), p.getEnderecoEntrega(), p.getSubtotalMercadorias(), p.getValorFrete(), p.getPrazoFreteDiasUteis(), p.getPrazoFrete(), p.getStatusEntrega(), p.getCodigoRastreio()))
                 .toList();
     }
 
@@ -526,6 +550,10 @@ public class PagamentoService {
                     "title", item.getNomeProduto() + " - " + item.getTamanho(),
                     "quantity", item.getQuantidade(), "currency_id", "BRL",
                     "unit_price", item.getPrecoUnitario()));
+        }
+        if (pedido.getValorFrete() != null && pedido.getValorFrete().signum() > 0) {
+            itens.add(Map.of("id", "frete", "title", "Frete de entrega", "quantity", 1,
+                    "currency_id", "BRL", "unit_price", pedido.getValorFrete()));
         }
         return itens;
     }

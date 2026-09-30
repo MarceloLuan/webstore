@@ -37,6 +37,7 @@ async function apiRequest(endpoint, options = {}) {
       'Não foi possível concluir a requisição.'
     const error = new Error(message)
     error.status = response.status
+    error.code = data?.code
     throw error
   }
 
@@ -126,6 +127,22 @@ export function excluirProduto(id) {
   })
 }
 
+export function listarPedidosAdmin() {
+  return apiRequest('/admin/pedidos')
+}
+
+export function buscarPedidoAdmin(id) {
+  return apiRequest(`/admin/pedidos/${id}`)
+}
+
+export function atualizarStatusEntregaAdmin(id, statusEntrega, codigoRastreio = null) {
+  return apiRequest(`/admin/pedidos/${id}/status-entrega`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ statusEntrega, codigoRastreio }),
+  })
+}
+
 export function buscarCarrinho() {
   return apiRequest('/carrinho')
 }
@@ -158,6 +175,10 @@ export function limparCarrinho() {
 
 export function criarCheckout(recebimento) {
   return apiPost('/pagamentos/checkout', recebimento)
+}
+
+export function cotarFrete(recebimento) {
+  return apiPost('/pagamentos/frete/cotacao', recebimento)
 }
 
 export function tentarPagamentoNovamente(pedidoId) {

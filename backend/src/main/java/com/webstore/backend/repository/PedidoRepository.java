@@ -17,6 +17,8 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
     List<Long> findReservasVencidas(@Param("agora") java.time.Instant agora, org.springframework.data.domain.Pageable pageable);
 
     List<Pedido> findAllByStatusOrderByCriadoEmDesc(com.webstore.backend.model.PedidoStatus status);
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"cliente", "itens", "itens.produtoTamanho"})
+    List<Pedido> findAllByOrderByCriadoEmDesc();
     @Query("select p.id from Pedido p where p.checkoutFingerprint = :fingerprint")
     Optional<Long> findIdByCheckoutFingerprint(@Param("fingerprint") String fingerprint);
     @Lock(LockModeType.PESSIMISTIC_WRITE)

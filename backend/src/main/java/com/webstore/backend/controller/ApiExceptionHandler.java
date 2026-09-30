@@ -10,6 +10,11 @@ import org.springframework.web.server.ResponseStatusException;
 @RestControllerAdvice
 public class ApiExceptionHandler {
 
+    @ExceptionHandler(com.webstore.backend.service.frete.FreteException.class)
+    public ResponseEntity<Map<String, String>> handleFrete(com.webstore.backend.service.frete.FreteException exception) {
+        return ResponseEntity.status(exception.getStatusCode()).body(Map.of("code", exception.getCodigo(), "message", exception.getReason()));
+    }
+
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<Map<String, String>> handleResponseStatusException(ResponseStatusException exception) {
         String message = exception.getReason();

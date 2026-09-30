@@ -36,6 +36,12 @@ public class PagamentoController {
         return pagamentoService.criarCheckout(request);
     }
 
+    @PostMapping("/frete/cotacao")
+    @PreAuthorize("hasRole('CLIENTE')")
+    public com.webstore.backend.controller.dto.CotacaoFreteResponse cotarFrete(@RequestBody com.webstore.backend.controller.dto.CheckoutRequest request) {
+        return pagamentoService.cotarFrete(request);
+    }
+
     @PostMapping("/pedidos/{pedidoId}/tentativas")
     @PreAuthorize("hasRole('CLIENTE')")
     public CheckoutResponse tentarNovamente(@PathVariable Long pedidoId) {

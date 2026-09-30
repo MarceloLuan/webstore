@@ -38,6 +38,7 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 @SpringBootTest(properties = {
         "spring.datasource.url=jdbc:h2:mem:pagamento_tests;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;LOCK_TIMEOUT=10000",
         "mercadopago.access-token=token-apenas-para-http-simulado",
+        "frete.regras=01000000-19999999:0.00:3;80000001-86124999:12.50:4",
         "mercadopago.webhook-secret=segredo-apenas-para-http-simulado"
 })
 @Import(PagamentoIntegrationTests.HttpSimulado.class)
@@ -85,6 +86,7 @@ class PagamentoIntegrationTests {
 
     @BeforeEach void preparar() {
         server.reset();
+        jdbc.update("delete from cotacoes_frete");
         jdbc.update("update pedidos set tentativa_concluida_id = null");
         tentativas.deleteAll();
         pedidos.deleteAll();
@@ -178,7 +180,7 @@ class PagamentoIntegrationTests {
     @Test void erroDeCheckoutPreservaTentativaParaNovaTentativa() {
         server.expect(requestTo("https://api.mercadopago.com/checkout/preferences"))
                 .andRespond(withStatus(HttpStatus.BAD_REQUEST));
-        assertThatThrownBy(() -> service.criarCheckout(retirada())).isInstanceOf(ResponseStatusException.class);
+        assertThatThrownBy(() -> checkoutComCotacao(retirada())).isInstanceOf(ResponseStatusException.class);
         server.verify(); server.reset();
         Pedido pedido = pedidos.findAll().get(0);
         assertThat(service.listarTentativas(pedido.getId())).singleElement().satisfies(t -> assertThat(t.status()).isEqualTo(PedidoStatus.ERRO));
@@ -227,7 +229,7 @@ class PagamentoIntegrationTests {
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.checkoutUrl").value(checkout.checkoutUrl()));
         for (int i = 0; i < 2; i++) {
             mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/pagamentos/checkout")
-                            .contentType(MediaType.APPLICATION_JSON).content("{\"modalidade\":\"RETIRADA\"}")
+                            .contentType(MediaType.APPLICATION_JSON).content("{\"modalidade\":\"RETIRADA\",\"cotacaoId\":\"" + pedidos.findById(checkout.pedidoId()).orElseThrow().getCotacaoFreteId() + "\"}")
                             .header("Authorization", "Bearer " + token))
                     .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
                     .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.pedidoId").value(checkout.pedidoId()))
@@ -335,7 +337,7 @@ class PagamentoIntegrationTests {
     @Test void checkoutRepetidoRetornaMesmoPedidoEPreferenciaSemChamarProvedor() {
         CheckoutResponse original = novoCheckout();
         // Inclui perda da resposta ao navegador: a resposta é recuperável só pelo carrinho.
-        for (int i = 0; i < 3; i++) assertThat(service.criarCheckout(retirada())).isEqualTo(original);
+        for (int i = 0; i < 3; i++) assertThat(checkoutComCotacao(retirada())).isEqualTo(original);
         assertThat(pedidos.count()).isEqualTo(1);
         assertThat(tentativas.count()).isEqualTo(1);
     }
@@ -353,16 +355,16 @@ class PagamentoIntegrationTests {
         try {
             Future<CheckoutResponse> primeira = executor.submit(() -> {
                 autenticar(email);
-                try { return service.criarCheckout(retirada()); } finally { SecurityContextHolder.clearContext(); }
+                try { return checkoutComCotacao(retirada()); } finally { SecurityContextHolder.clearContext(); }
             });
             assertThat(entrouNoProvedor.await(10, TimeUnit.SECONDS)).isTrue();
             // O pedido já está confirmado no banco, mas a chamada externa ainda não respondeu.
             assertThat(pedidos.count()).isEqualTo(1);
-            assertThatThrownBy(() -> service.criarCheckout(retirada())).isInstanceOf(ResponseStatusException.class)
+            assertThatThrownBy(() -> checkoutComCotacao(retirada())).isInstanceOf(ResponseStatusException.class)
                     .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode()).isEqualTo(HttpStatus.CONFLICT));
             liberarResposta.countDown();
             CheckoutResponse resposta = primeira.get(10, TimeUnit.SECONDS);
-            assertThat(service.criarCheckout(retirada())).isEqualTo(resposta);
+            assertThat(checkoutComCotacao(retirada())).isEqualTo(resposta);
             assertThat(pedidos.count()).isEqualTo(1);
             assertThat(tentativas.count()).isEqualTo(1);
         } finally { liberarResposta.countDown(); executor.shutdownNow(); }
@@ -371,11 +373,11 @@ class PagamentoIntegrationTests {
     @Test void timeoutDoProvedorNaoPermiteCriarOutraPreferenciaAsCegas() {
         server.expect(requestTo("https://api.mercadopago.com/checkout/preferences"))
                 .andRespond(request -> { throw new java.net.SocketTimeoutException("resposta perdida"); });
-        assertThatThrownBy(() -> service.criarCheckout(retirada())).isInstanceOf(ResponseStatusException.class);
+        assertThatThrownBy(() -> checkoutComCotacao(retirada())).isInstanceOf(ResponseStatusException.class);
         server.verify(); server.reset();
         Pedido pedido = pedidos.findAll().get(0);
         assertThat(tentativas.findAll().get(0).getStatusProvedor()).isEqualTo("checkout_unknown");
-        assertThatThrownBy(() -> service.criarCheckout(retirada())).isInstanceOf(ResponseStatusException.class);
+        assertThatThrownBy(() -> checkoutComCotacao(retirada())).isInstanceOf(ResponseStatusException.class);
         assertThatThrownBy(() -> service.tentarNovamente(pedido.getId())).isInstanceOf(ResponseStatusException.class);
         assertThat(pedidos.count()).isEqualTo(1);
         assertThat(tentativas.count()).isEqualTo(1);
@@ -388,10 +390,10 @@ class PagamentoIntegrationTests {
     @Test void falhaInesperadaDepoisDoEnvioMantemMarcadorDuravel() {
         server.expect(requestTo("https://api.mercadopago.com/checkout/preferences"))
                 .andRespond(request -> { throw new AssertionError("interrupcao simulada antes de salvar a resposta"); });
-        assertThatThrownBy(() -> service.criarCheckout(retirada())).isInstanceOf(AssertionError.class);
+        assertThatThrownBy(() -> checkoutComCotacao(retirada())).isInstanceOf(AssertionError.class);
         server.verify(); server.reset();
         assertThat(tentativas.findAll().get(0).getStatusProvedor()).isEqualTo("checkout_processing");
-        assertThatThrownBy(() -> service.criarCheckout(retirada())).isInstanceOf(ResponseStatusException.class);
+        assertThatThrownBy(() -> checkoutComCotacao(retirada())).isInstanceOf(ResponseStatusException.class);
         assertThatThrownBy(() -> service.tentarNovamente(pedidos.findAll().get(0).getId())).isInstanceOf(ResponseStatusException.class);
         assertThat(pedidos.count()).isEqualTo(1);
         assertThat(tentativas.count()).isEqualTo(1);
@@ -400,9 +402,9 @@ class PagamentoIntegrationTests {
     @Test void erro5xxPreservaCompraSemReenviarCheckout() {
         server.expect(requestTo("https://api.mercadopago.com/checkout/preferences"))
                 .andRespond(withStatus(HttpStatus.BAD_GATEWAY));
-        assertThatThrownBy(() -> service.criarCheckout(retirada())).isInstanceOf(ResponseStatusException.class);
+        assertThatThrownBy(() -> checkoutComCotacao(retirada())).isInstanceOf(ResponseStatusException.class);
         server.verify(); server.reset();
-        assertThatThrownBy(() -> service.criarCheckout(retirada())).isInstanceOf(ResponseStatusException.class);
+        assertThatThrownBy(() -> checkoutComCotacao(retirada())).isInstanceOf(ResponseStatusException.class);
         assertThat(tentativas.findAll().get(0).getStatusProvedor()).isEqualTo("checkout_unknown");
         assertThat(pedidos.count()).isEqualTo(1);
     }
@@ -411,10 +413,10 @@ class PagamentoIntegrationTests {
         CheckoutResponse original = novoCheckout();
         jdbc.update("update itens_carrinho set quantidade = 2");
         esperarCheckout("quantidade-alterada");
-        CheckoutResponse alterado = service.criarCheckout(retirada()); server.verify(); server.reset();
+        CheckoutResponse alterado = checkoutComCotacao(retirada()); server.verify(); server.reset();
         assertThat(alterado.pedidoId()).isNotEqualTo(original.pedidoId());
         assertThat(pedidos.findById(alterado.pedidoId()).orElseThrow().getTotal()).isEqualByComparingTo("200.00");
-        assertThat(service.criarCheckout(retirada())).isEqualTo(alterado);
+        assertThat(checkoutComCotacao(retirada())).isEqualTo(alterado);
         assertThat(pedidos.count()).isEqualTo(2);
     }
 
@@ -426,20 +428,20 @@ class PagamentoIntegrationTests {
         item.setProdutoTamanho(tamanhos.findById(variacaoId).orElseThrow()); item.setQuantidade(1);
         carrinho.getItens().add(item); carrinhos.save(carrinho);
         autenticar(outro.getEmail()); esperarCheckout("outro-cliente");
-        CheckoutResponse segundo = service.criarCheckout(retirada()); server.verify(); server.reset();
+        CheckoutResponse segundo = checkoutComCotacao(retirada()); server.verify(); server.reset();
         assertThat(segundo.pedidoId()).isNotEqualTo(primeiro.pedidoId());
-        assertThat(service.criarCheckout(retirada())).isEqualTo(segundo);
+        assertThat(checkoutComCotacao(retirada())).isEqualTo(segundo);
         assertThat(pedidos.count()).isEqualTo(2);
     }
 
     @Test void compraLegitimaAposPagamentoTemNovaIdentidade() {
         CheckoutResponse primeiro = novoCheckout();
         sincronizar("1002", "approved", "tentativa-" + tentativaAtual(primeiro.pedidoId()));
-        assertThatThrownBy(() -> service.criarCheckout(retirada())).isInstanceOf(ResponseStatusException.class);
+        assertThatThrownBy(() -> checkoutComCotacao(retirada())).isInstanceOf(ResponseStatusException.class);
         Carrinho carrinho = carrinhos.findByClienteId(cliente.getId()).orElseThrow();
         // O pagamento removeu as linhas; adicionar novamente cria outra identidade de compra.
         jdbc.update("insert into itens_carrinho (carrinho_id, produto_tamanho_id, quantidade) values (?, ?, 1)", carrinho.getId(), variacaoId);
-        esperarCheckout("nova-compra"); CheckoutResponse segundo = service.criarCheckout(retirada()); server.verify(); server.reset();
+        esperarCheckout("nova-compra"); CheckoutResponse segundo = checkoutComCotacao(retirada()); server.verify(); server.reset();
         assertThat(segundo.pedidoId()).isNotEqualTo(primeiro.pedidoId());
         assertThat(pedidos.count()).isEqualTo(2);
     }
@@ -486,7 +488,7 @@ class PagamentoIntegrationTests {
         assertThat(pedidos.findById(primeiro.pedidoId()).orElseThrow().getReservaStatus()).isEqualTo(ReservaStatus.EXPIRADA);
         Cliente outro = outroClienteComCarrinho("apos-expirar@test.com", List.of(variacaoId));
         autenticar(outro.getEmail()); esperarCheckout("apos-expirar");
-        CheckoutResponse segundo = service.criarCheckout(retirada()); server.verify(); server.reset();
+        CheckoutResponse segundo = checkoutComCotacao(retirada()); server.verify(); server.reset();
         // Pagamento tardio não pode consumir a unidade reservada pelo segundo cliente.
         sincronizar("2002", "approved", "tentativa-" + tentativaAtual(primeiro.pedidoId()));
         Pedido tardio = pedidos.findById(primeiro.pedidoId()).orElseThrow();
@@ -504,7 +506,7 @@ class PagamentoIntegrationTests {
         CheckoutResponse checkout = novoCheckout();
         assertThat(reservado()).isEqualTo(1);
         var prazo = pedidos.findById(checkout.pedidoId()).orElseThrow().getReservaExpiraEm();
-        assertThat(service.criarCheckout(retirada())).isEqualTo(checkout);
+        assertThat(checkoutComCotacao(retirada())).isEqualTo(checkout);
         assertThat(pedidos.findById(checkout.pedidoId()).orElseThrow().getReservaExpiraEm()).isEqualTo(prazo);
         assertThat(reservado()).isEqualTo(1);
         sincronizar("2004", "rejected", "tentativa-" + tentativaAtual(checkout.pedidoId()));
@@ -554,7 +556,7 @@ class PagamentoIntegrationTests {
         autenticar(cliente.getEmail());
         Long carrinhoId = carrinhos.findByClienteId(cliente.getId()).orElseThrow().getId();
         jdbc.update("insert into itens_carrinho (carrinho_id, produto_tamanho_id, quantidade) values (?, ?, 1)", carrinhoId, segunda);
-        assertThatThrownBy(() -> service.criarCheckout(retirada())).isInstanceOf(ResponseStatusException.class);
+        assertThatThrownBy(() -> checkoutComCotacao(retirada())).isInstanceOf(ResponseStatusException.class);
         assertThat(reservado()).isZero();
         assertThat(pedidos.count()).isEqualTo(1);
         assertThat(tamanhos.findById(segunda).orElseThrow().getQuantidadeReservada()).isEqualTo(1);
@@ -606,7 +608,7 @@ class PagamentoIntegrationTests {
     }
     private Object checkoutConcorrente(String email, CountDownLatch inicio) {
         autenticar(email); aguardar(inicio);
-        try { return service.criarCheckout(retirada()); }
+        try { return checkoutComCotacao(retirada()); }
         catch (ResponseStatusException e) { return e.getStatusCode(); }
         finally { SecurityContextHolder.clearContext(); }
     }
@@ -622,7 +624,7 @@ class PagamentoIntegrationTests {
     private int estoque() { return tamanhos.findById(variacaoId).orElseThrow().getQuantidade(); }
     private Long tentativaAtual(Long pedidoId) { return tentativas.findAllByPedidoIdOrderByIdDesc(pedidoId).get(0).getId(); }
     private CheckoutResponse novoCheckout() {
-        esperarCheckout("inicial"); CheckoutResponse result = service.criarCheckout(retirada()); server.verify(); server.reset(); return result;
+        esperarCheckout("inicial"); CheckoutResponse result = checkoutComCotacao(retirada()); server.verify(); server.reset(); return result;
     }
     private void esperarCheckout(String id) {
         server.expect(requestTo("https://api.mercadopago.com/checkout/preferences"))
@@ -707,6 +709,10 @@ class PagamentoIntegrationTests {
     }
 
     private static CheckoutRequest retirada() { return new CheckoutRequest(ModalidadeRecebimento.RETIRADA, null); }
+    private CheckoutResponse checkoutComCotacao(CheckoutRequest request) {
+        var cotacao = service.cotarFrete(request);
+        return service.criarCheckout(new CheckoutRequest(request.modalidade(), request.endereco(), cotacao.id()));
+    }
 
     private static String[] camposEndereco() {
         return new String[]{" Maria Silva ", "01310-100", " Avenida Paulista ", "1578", "", "Bela Vista", "São Paulo", "sp"};
@@ -720,7 +726,7 @@ class PagamentoIntegrationTests {
     @Test void enderecoNormalizadoPersistidoEDeduplicadoIndependenteDoPerfil() {
         CheckoutRequest request = entrega(camposEndereco());
         esperarCheckout("endereco");
-        CheckoutResponse checkout = service.criarCheckout(request); server.verify(); server.reset();
+        CheckoutResponse checkout = checkoutComCotacao(request); server.verify(); server.reset();
         var pedido = pedidos.findById(checkout.pedidoId()).orElseThrow();
         assertThat(pedido.getModalidade()).isEqualTo(ModalidadeRecebimento.ENTREGA);
         assertThat(pedido.getEnderecoEntrega().destinatario()).isEqualTo("Maria Silva");
@@ -728,7 +734,7 @@ class PagamentoIntegrationTests {
         assertThat(pedido.getEnderecoEntrega().uf()).isEqualTo("SP");
         assertThat(pedido.getEnderecoEntrega().complemento()).isNull();
         String[] normalizado = camposEndereco(); normalizado[0] = "Maria Silva"; normalizado[1] = "01310100"; normalizado[7] = "SP";
-        assertThat(service.criarCheckout(entrega(normalizado))).isEqualTo(checkout);
+        assertThat(checkoutComCotacao(entrega(normalizado))).isEqualTo(checkout);
         cliente.setNome("Outro nome no perfil"); clientes.save(cliente);
         assertThat(service.buscarPedido(checkout.pedidoId()).enderecoEntrega()).isEqualTo(pedido.getEnderecoEntrega());
         assertThat(service.listarPedidos().get(0).enderecoEntrega()).isEqualTo(pedido.getEnderecoEntrega());
@@ -740,14 +746,14 @@ class PagamentoIntegrationTests {
 
     @Test void destinosDiferentesNaoReutilizamPedidoAnterior() {
         esperarCheckout("destino-a");
-        var primeiro = service.criarCheckout(entrega(camposEndereco())); server.verify(); server.reset();
+        var primeiro = checkoutComCotacao(entrega(camposEndereco())); server.verify(); server.reset();
         String[] outro = camposEndereco(); outro[3] = "2000"; outro[4] = "Apto 12";
         esperarCheckout("destino-b");
-        var segundo = service.criarCheckout(entrega(outro)); server.verify(); server.reset();
+        var segundo = checkoutComCotacao(entrega(outro)); server.verify(); server.reset();
         assertThat(segundo.pedidoId()).isNotEqualTo(primeiro.pedidoId());
         assertThat(pedidos.findById(primeiro.pedidoId()).orElseThrow().getEnderecoEntrega().numero()).isEqualTo("1578");
         assertThat(pedidos.findById(segundo.pedidoId()).orElseThrow().getEnderecoEntrega().complemento()).isEqualTo("Apto 12");
-        esperarCheckout("retirada"); var retirada = service.criarCheckout(retirada()); server.verify(); server.reset();
+        esperarCheckout("retirada"); var retirada = checkoutComCotacao(retirada()); server.verify(); server.reset();
         assertThat(retirada.pedidoId()).isNotIn(primeiro.pedidoId(), segundo.pedidoId());
         assertThat(pedidos.findById(retirada.pedidoId()).orElseThrow().getEnderecoEntrega()).isNull();
     }
@@ -756,7 +762,7 @@ class PagamentoIntegrationTests {
     @org.junit.jupiter.params.provider.ValueSource(ints = {0, 1, 2, 3, 5, 6, 7})
     void camposObrigatoriosValidadosAntesDeReservarOuChamarProvedor(int campo) {
         String[] valores = camposEndereco(); valores[campo] = "   ";
-        assertThatThrownBy(() -> service.criarCheckout(entrega(valores))).isInstanceOf(ResponseStatusException.class)
+        assertThatThrownBy(() -> checkoutComCotacao(entrega(valores))).isInstanceOf(ResponseStatusException.class)
                 .satisfies(e -> assertThat(((ResponseStatusException)e).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
         assertThat(pedidos.count()).isZero(); assertThat(reservado()).isZero();
     }
@@ -764,12 +770,12 @@ class PagamentoIntegrationTests {
     @Test void rejeitaCepUfELimitesInvalidosNoBackend() {
         for (String cep : List.of("123", "ABCDE-123", "00000000", "123456789", "01310 100")) {
             String[] campos = camposEndereco(); campos[1] = cep;
-            assertThatThrownBy(() -> service.criarCheckout(entrega(campos))).isInstanceOf(ResponseStatusException.class);
+            assertThatThrownBy(() -> checkoutComCotacao(entrega(campos))).isInstanceOf(ResponseStatusException.class);
         }
         String[] campos = camposEndereco(); campos[7] = "XX";
-        assertThatThrownBy(() -> service.criarCheckout(entrega(campos))).isInstanceOf(ResponseStatusException.class);
+        assertThatThrownBy(() -> checkoutComCotacao(entrega(campos))).isInstanceOf(ResponseStatusException.class);
         campos[7] = "SP"; campos[4] = "a".repeat(121);
-        assertThatThrownBy(() -> service.criarCheckout(entrega(campos))).isInstanceOf(ResponseStatusException.class);
+        assertThatThrownBy(() -> checkoutComCotacao(entrega(campos))).isInstanceOf(ResponseStatusException.class);
         assertThat(pedidos.count()).isZero(); assertThat(reservado()).isZero();
     }
 
@@ -788,6 +794,7 @@ class PagamentoIntegrationTests {
     }
 
     @Test void apiPersisteEntregaEDevolveSomenteAoDono() throws Exception {
+        var cotacaoId = service.cotarFrete(entrega(camposEndereco())).id();
         var mvc = org.springframework.test.web.servlet.setup.MockMvcBuilders.webAppContextSetup(webContext).addFilters(securityFilter).build();
         String token = jwt.generateToken(org.springframework.security.core.userdetails.User
                 .withUsername(cliente.getEmail()).password("hash").roles("CLIENTE").build());
@@ -795,9 +802,9 @@ class PagamentoIntegrationTests {
         esperarCheckout("api-endereco");
         mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/pagamentos/checkout")
                         .header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON).content("""
-                        {"modalidade":"ENTREGA","endereco":{"destinatario":"Maria Silva","cep":"01310-100",
-                        "rua":"Avenida Paulista","numero":"S/N","bairro":"Bela Vista","cidade":"São Paulo","uf":"sp"}}
-                        """))
+                        {"modalidade":"ENTREGA","cotacaoId":"%s","endereco":{"destinatario":"Maria Silva","cep":"01310-100",
+                        "rua":"Avenida Paulista","numero":"1578","bairro":"Bela Vista","cidade":"São Paulo","uf":"sp"}}
+                        """.formatted(cotacaoId)))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk());
         server.verify(); server.reset();
         Long id = pedidos.findAll().get(0).getId();
@@ -806,7 +813,7 @@ class PagamentoIntegrationTests {
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.modalidade").value("ENTREGA"))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.enderecoEntrega.cep").value("01310100"))
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.enderecoEntrega.numero").value("S/N"));
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.enderecoEntrega.numero").value("1578"));
         clientes.save(new Cliente("Outro", "endereco-outro@test.com", "11999999999", "hash"));
         String outroToken = jwt.generateToken(org.springframework.security.core.userdetails.User
                 .withUsername("endereco-outro@test.com").password("hash").roles("CLIENTE").build());
@@ -817,10 +824,120 @@ class PagamentoIntegrationTests {
 
     @Test void pedidoLegadoSemDestinoContinuaConsultavelMasNaoAbreNovoPagamento() {
         var checkout = novoCheckout();
-        jdbc.update("update pedidos set modalidade = null where id = ?", checkout.pedidoId());
+        jdbc.update("update pedidos set modalidade = null, valor_frete = null, subtotal_mercadorias = null, cotacao_frete_id = null, prazo_frete = null, prazo_frete_dias_uteis = null where id = ?", checkout.pedidoId());
         assertThat(service.buscarPedido(checkout.pedidoId()).modalidade()).isNull();
         assertThatThrownBy(() -> service.tentarNovamente(checkout.pedidoId())).isInstanceOf(ResponseStatusException.class);
         assertThat(tentativas.count()).isEqualTo(1);
+    }
+
+    private CheckoutRequest entregaComFrete() {
+        String[] campos = camposEndereco(); campos[1] = "80000-001"; campos[6] = "Curitiba"; campos[7] = "PR";
+        return entrega(campos);
+    }
+
+    @Test void cotacaoNaoReservaECheckoutSomaFreteNaPreferenciaENaConfirmacao() {
+        var request = entregaComFrete(); var cotacao = service.cotarFrete(request);
+        assertThat(cotacao.mercadorias()).isEqualByComparingTo("100.00");
+        assertThat(cotacao.valorFrete()).isEqualByComparingTo("12.50");
+        assertThat(cotacao.total()).isEqualByComparingTo("112.50");
+        assertThat(cotacao.prazoDiasUteis()).isEqualTo(4);
+        assertThat(pedidos.count()).isZero(); assertThat(reservado()).isZero();
+        server.expect(requestTo("https://api.mercadopago.com/checkout/preferences"))
+                .andExpect(jsonPath("$.items[0].unit_price").value(100.00))
+                .andExpect(jsonPath("$.items[1].id").value("frete"))
+                .andExpect(jsonPath("$.items[1].unit_price").value(12.50))
+                .andExpect(jsonPath("$.items[1].quantity").value(1))
+                .andRespond(withSuccess("{\"id\":\"com-frete\",\"init_point\":\"https://example.test/com-frete\"}", MediaType.APPLICATION_JSON));
+        var checkout = service.criarCheckout(new CheckoutRequest(request.modalidade(), request.endereco(), cotacao.id()));
+        server.verify(); server.reset();
+        var salvo = service.buscarPedido(checkout.pedidoId());
+        assertThat(salvo.total()).isEqualByComparingTo("112.50");
+        assertThat(salvo.valorFrete()).isEqualByComparingTo("12.50");
+        assertThat(salvo.prazoFrete()).isEqualTo(cotacao.prazo());
+        String ref = "tentativa-" + tentativaAtual(checkout.pedidoId());
+        esperarPagamento("5001", "approved", ref, "100.00");
+        assertThatThrownBy(() -> service.processarRetorno("5001")).isInstanceOf(ResponseStatusException.class);
+        server.verify(); server.reset(); assertThat(estoque()).isEqualTo(5);
+        esperarPagamento("5001", "approved", ref, "112.50"); service.processarRetorno("5001"); server.verify(); server.reset();
+        assertThat(estoque()).isEqualTo(4);
+    }
+
+    @Test void cotacaoVencidaOuDeOutroDestinoNaoCriaPedido() {
+        var request = entregaComFrete(); var cotacao = service.cotarFrete(request);
+        jdbc.update("update cotacoes_frete set expira_em = ? where id = ?", java.sql.Timestamp.from(java.time.Instant.now().minusSeconds(1)), cotacao.id());
+        assertThatThrownBy(() -> service.criarCheckout(new CheckoutRequest(request.modalidade(), request.endereco(), cotacao.id())))
+                .isInstanceOfSatisfying(com.webstore.backend.service.frete.FreteException.class, e -> assertThat(e.getCodigo()).isEqualTo("COTACAO_EXPIRADA"));
+        var outra = service.cotarFrete(request);
+        var mudado = entrega(camposEndereco());
+        assertThatThrownBy(() -> service.criarCheckout(new CheckoutRequest(mudado.modalidade(), mudado.endereco(), outra.id())))
+                .isInstanceOfSatisfying(com.webstore.backend.service.frete.FreteException.class, e -> assertThat(e.getCodigo()).isEqualTo("COTACAO_DESATUALIZADA"));
+        assertThat(pedidos.count()).isZero(); assertThat(reservado()).isZero();
+    }
+
+    @Test void cotacaoDeOutroClienteOuCarrinhoAlteradoNaoPodeSerUsada() {
+        var cotacao = service.cotarFrete(retirada());
+        var outro = outroClienteComCarrinho("frete-outro@test.com", List.of(variacaoId));
+        autenticar(outro.getEmail());
+        assertThatThrownBy(() -> service.criarCheckout(new CheckoutRequest(ModalidadeRecebimento.RETIRADA, null, cotacao.id())))
+                .isInstanceOfSatisfying(com.webstore.backend.service.frete.FreteException.class, e -> assertThat(e.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
+        autenticar(cliente.getEmail());
+        jdbc.update("update itens_carrinho set quantidade = 2");
+        assertThatThrownBy(() -> service.criarCheckout(new CheckoutRequest(ModalidadeRecebimento.RETIRADA, null, cotacao.id())))
+                .isInstanceOfSatisfying(com.webstore.backend.service.frete.FreteException.class, e -> assertThat(e.getCodigo()).isEqualTo("COTACAO_DESATUALIZADA"));
+        assertThat(pedidos.count()).isZero();
+    }
+
+    @Test void replayDeCheckoutUsaSnapshotMesmoAposValidadeDaCotacao() {
+        var c = service.cotarFrete(retirada()); var req = new CheckoutRequest(ModalidadeRecebimento.RETIRADA, null, c.id());
+        esperarCheckout("replay-frete"); var primeiro = service.criarCheckout(req); server.verify(); server.reset();
+        jdbc.update("update cotacoes_frete set expira_em = ? where id = ?", java.sql.Timestamp.from(java.time.Instant.now().minusSeconds(1)), c.id());
+        assertThat(service.criarCheckout(req)).isEqualTo(primeiro);
+        assertThat(pedidos.count()).isEqualTo(1); assertThat(tentativas.count()).isEqualTo(1); assertThat(reservado()).isEqualTo(1);
+    }
+
+    @Test void checkoutSemCotacaoERegiaoNaoAtendidaNaoTemEfeitosColaterais() {
+        assertThatThrownBy(() -> service.criarCheckout(retirada())).isInstanceOfSatisfying(com.webstore.backend.service.frete.FreteException.class,
+                e -> assertThat(e.getCodigo()).isEqualTo("COTACAO_OBRIGATORIA"));
+        String[] campos = camposEndereco(); campos[1] = "20000-001";
+        assertThatThrownBy(() -> service.cotarFrete(entrega(campos))).isInstanceOfSatisfying(com.webstore.backend.service.frete.FreteException.class,
+                e -> assertThat(e.getCodigo()).isEqualTo("REGIAO_NAO_ATENDIDA"));
+        assertThat(pedidos.count()).isZero(); assertThat(tentativas.count()).isZero(); assertThat(reservado()).isZero();
+    }
+
+    @Test void valoresEnviadosPeloNavegadorNaoAlteramFreteOuTotal() throws Exception {
+        var cotacao = service.cotarFrete(entregaComFrete());
+        var mvc = org.springframework.test.web.servlet.setup.MockMvcBuilders.webAppContextSetup(webContext).addFilters(securityFilter).build();
+        String token = jwt.generateToken(org.springframework.security.core.userdetails.User
+                .withUsername(cliente.getEmail()).password("hash").roles("CLIENTE").build());
+        SecurityContextHolder.clearContext(); esperarCheckout("valores-forjados");
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/pagamentos/checkout")
+                        .header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON).content("""
+                        {"modalidade":"ENTREGA","cotacaoId":"%s","valorFrete":0,"total":1,"mercadorias":1,
+                        "prazoDiasUteis":0,"endereco":{"destinatario":"Maria Silva","cep":"80000-001",
+                        "rua":"Avenida Paulista","numero":"1578","bairro":"Bela Vista","cidade":"Curitiba","uf":"PR"}}
+                        """.formatted(cotacao.id())))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk());
+        var pedido = pedidos.findAll().get(0);
+        assertThat(pedido.getTotal()).isEqualByComparingTo("112.50");
+        assertThat(pedido.getValorFrete()).isEqualByComparingTo("12.50");
+        assertThat(pedido.getPrazoFreteDiasUteis()).isEqualTo(4);
+    }
+
+    @Test void novaCotacaoDiferenteNaoReescrevePedidoOuGeraCobrancaDuplicada() {
+        var request = entregaComFrete();
+        esperarCheckout("tarifa-original"); var primeiro = checkoutComCotacao(request); server.verify(); server.reset();
+        var segunda = service.cotarFrete(request);
+        // Simula nova tabela retornando outro preço, sem editar o snapshot do pedido.
+        jdbc.update("update cotacoes_frete set valor = 35.00 where id = ?", segunda.id());
+        assertThatThrownBy(() -> service.criarCheckout(new CheckoutRequest(request.modalidade(), request.endereco(), segunda.id())))
+                .isInstanceOfSatisfying(ResponseStatusException.class, e -> assertThat(e.getStatusCode()).isEqualTo(HttpStatus.CONFLICT));
+        assertThat(pedidos.count()).isEqualTo(1); assertThat(tentativas.count()).isEqualTo(1);
+        assertThat(service.buscarPedido(primeiro.pedidoId()).valorFrete()).isEqualByComparingTo("12.50");
+        esperarPagamento("5002", "rejected", "tentativa-" + tentativaAtual(primeiro.pedidoId()), "112.50");
+        service.processarRetorno("5002"); server.verify(); server.reset();
+        esperarCheckout("tarifa-retomada"); service.tentarNovamente(primeiro.pedidoId()); server.verify(); server.reset();
+        assertThat(service.buscarPedido(primeiro.pedidoId()).total()).isEqualByComparingTo("112.50");
+        assertThat(service.buscarPedido(primeiro.pedidoId()).prazoFreteDiasUteis()).isEqualTo(4);
     }
 
     private void sincronizar(String id, String status, String referencia) {

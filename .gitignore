@@ -23,3 +23,6 @@ application-secrets.yaml
 
 # Local output can contain credentials or request data.
 *.log
+
+# Markdown documentation is not versioned in this project.
+*.[mM][dD]

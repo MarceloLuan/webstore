@@ -7,7 +7,8 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.Locale;
 import java.util.Set;
 
-public record CheckoutRequest(ModalidadeRecebimento modalidade, EnderecoRequest endereco) {
+public record CheckoutRequest(ModalidadeRecebimento modalidade, EnderecoRequest endereco, java.util.UUID cotacaoId) {
+    public CheckoutRequest(ModalidadeRecebimento modalidade, EnderecoRequest endereco) { this(modalidade, endereco, null); }
     public EnderecoEntrega validarEndereco() {
         if (modalidade == null) throw erro("Selecione entrega ou retirada.");
         if (modalidade == ModalidadeRecebimento.RETIRADA) {
@@ -30,7 +31,7 @@ public record CheckoutRequest(ModalidadeRecebimento modalidade, EnderecoRequest 
         private EnderecoEntrega validar() {
             String cepValido = campo(cep, "CEP", 9, true);
             if (!cepValido.matches("[0-9]{5}-?[0-9]{3}") || cepValido.replace("-", "").equals("00000000")) {
-                throw erro("Informe um CEP válido com 8 dígitos.");
+                throw new com.webstore.backend.service.frete.FreteException(HttpStatus.BAD_REQUEST, "CEP_INVALIDO", "Informe um CEP válido com 8 dígitos.");
             }
             String ufValida = campo(uf, "UF", 2, true).toUpperCase(Locale.ROOT);
             if (!UFS.contains(ufValida)) throw erro("Selecione uma UF válida.");

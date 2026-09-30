@@ -7,5 +7,7 @@ import java.math.BigDecimal;
 public record PedidoStatusResponse(Long id, PedidoStatus status, BigDecimal total,
         com.webstore.backend.model.ReservaStatus reservaStatus, java.time.Instant reservaExpiraEm,
         com.webstore.backend.model.ModalidadeRecebimento modalidade,
-        com.webstore.backend.model.EnderecoEntrega enderecoEntrega) {
+        com.webstore.backend.model.EnderecoEntrega enderecoEntrega,
+        BigDecimal subtotalMercadorias, BigDecimal valorFrete, Integer prazoFreteDiasUteis, String prazoFrete,
+        com.webstore.backend.model.StatusEntrega statusEntrega, String codigoRastreio) {
 }
