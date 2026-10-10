@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 import jakarta.annotation.PostConstruct;
 import java.security.Key;
 import java.util.Date;
+import java.time.Instant;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -41,6 +42,10 @@ public class JwtUtil {
     }
 
     public String generateToken(UserDetails userDetails) {
+        return generateToken(userDetails, 0L);
+    }
+
+    public String generateToken(UserDetails userDetails, long versaoSessao) {
         Date now = new Date();
         Date expiration = new Date(now.getTime() + expirationMs);
         List<String> roles = userDetails.getAuthorities().stream()
@@ -50,6 +55,7 @@ public class JwtUtil {
         return Jwts.builder()
                 .setSubject(userDetails.getUsername())
                 .claim("roles", roles)
+                .claim("sessionVersion", versaoSessao)
                 .setIssuedAt(now)
                 .setExpiration(expiration)
                 .signWith(signingKey, SignatureAlgorithm.HS256)
@@ -61,8 +67,14 @@ public class JwtUtil {
     }
 
     public boolean validateToken(String token, UserDetails userDetails) {
+        return validateToken(token, userDetails, 0L);
+    }
+
+    public boolean validateToken(String token, UserDetails userDetails, long versaoSessao) {
         String username = extractUsername(token);
-        return username.equalsIgnoreCase(userDetails.getUsername()) && !isTokenExpired(token);
+        Number versaoToken = getClaims(token).get("sessionVersion", Number.class);
+        long versao = versaoToken == null ? 0L : versaoToken.longValue();
+        return username.equalsIgnoreCase(userDetails.getUsername()) && !isTokenExpired(token) && versao == versaoSessao;
     }
 
     private boolean isTokenExpired(String token) {

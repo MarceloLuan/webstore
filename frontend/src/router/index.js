@@ -1,6 +1,9 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import LoginView from '@/views/LoginView.vue'
 import CadastroView from '@/views/CadastroView.vue'
+import ConfirmarEmailView from '@/views/ConfirmarEmailView.vue'
+import EsqueciSenhaView from '@/views/EsqueciSenhaView.vue'
+import RedefinirSenhaView from '@/views/RedefinirSenhaView.vue'
 import HomeView from '@/views/HomeView.vue'
 import MinhaContaView from '@/views/MinhaContaView.vue'
 import ProdutosCrudView from '@/views/ProdutosCrudView.vue'
@@ -26,6 +29,21 @@ const router = createRouter({
       path: '/cadastro',
       name: 'cadastro',
       component: CadastroView,
+    },
+    {
+      path: '/confirmar-email',
+      name: 'confirmar-email',
+      component: ConfirmarEmailView,
+    },
+    {
+      path: '/esqueci-senha',
+      name: 'esqueci-senha',
+      component: EsqueciSenhaView,
+    },
+    {
+      path: '/redefinir-senha',
+      name: 'redefinir-senha',
+      component: RedefinirSenhaView,
     },
     {
       path: '/home',
@@ -82,7 +100,7 @@ router.beforeEach((to) => {
   const user = getUser()
   const authenticated = isAuthenticated()
 
-  if (authenticated && (to.name === 'login' || to.name === 'cadastro')) {
+  if (authenticated && (to.name === 'login' || to.name === 'cadastro' || to.name === 'esqueci-senha')) {
     return { name: 'home' }
   }
 

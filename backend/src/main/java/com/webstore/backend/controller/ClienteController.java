@@ -7,6 +7,7 @@ import com.webstore.backend.controller.dto.LoginResponse;
 import com.webstore.backend.controller.dto.UsuarioResponse;
 import com.webstore.backend.model.Cliente;
 import com.webstore.backend.service.ClienteService;
+import com.webstore.backend.service.ConfirmacaoEmailService;
 import com.webstore.backend.repository.UsuarioRepository;
 import com.webstore.backend.security.JwtUtil;
 import org.springframework.http.HttpStatus;
@@ -28,15 +29,18 @@ public class ClienteController {
     private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
     private final UsuarioRepository usuarioRepository;
+    private final ConfirmacaoEmailService confirmacaoEmailService;
 
     public ClienteController(ClienteService clienteService,
                              AuthenticationManager authenticationManager,
                              JwtUtil jwtUtil,
-                             UsuarioRepository usuarioRepository) {
+                             UsuarioRepository usuarioRepository,
+                             ConfirmacaoEmailService confirmacaoEmailService) {
         this.clienteService = clienteService;
         this.authenticationManager = authenticationManager;
         this.jwtUtil = jwtUtil;
         this.usuarioRepository = usuarioRepository;
+        this.confirmacaoEmailService = confirmacaoEmailService;
     }
 
     @PostMapping("/clientes")
@@ -48,6 +52,7 @@ public class ClienteController {
         cliente.setSenha(request.getSenha());
 
         Cliente clienteSalvo = clienteService.cadastrar(cliente, request.getConfirmacaoSenha());
+        confirmacaoEmailService.enviarParaNovoCadastro(clienteSalvo);
         return ResponseEntity.status(HttpStatus.CREATED).body(ClienteResponse.from(clienteSalvo));
     }
 
@@ -58,10 +63,15 @@ public class ClienteController {
         );
 
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-        String token = jwtUtil.generateToken(userDetails);
-
         return usuarioRepository.findByEmail(userDetails.getUsername())
-                .map(usuario -> ResponseEntity.ok(new LoginResponse(token, UsuarioResponse.from(usuario))))
+                .map(usuario -> {
+                    if (!Boolean.TRUE.equals(usuario.getEmailConfirmado())) {
+                        throw new org.springframework.web.server.ResponseStatusException(HttpStatus.FORBIDDEN,
+                                "Confirme seu e-mail antes de entrar na conta.");
+                    }
+                    String token = jwtUtil.generateToken(userDetails, usuario.getVersaoSessao());
+                    return ResponseEntity.ok(new LoginResponse(token, UsuarioResponse.from(usuario)));
+                })
                 .orElseThrow(() -> new IllegalStateException("Usuário autenticado não encontrado."));
     }
 }

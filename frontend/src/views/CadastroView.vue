@@ -36,12 +36,31 @@ function aoDigitarTelefone(evento) {
   telefone.value = formatarTelefone(evento.target.value)
 }
 
+function senhaValida(valor) {
+  return valor.length >= 8 && /[A-Za-zÀ-ÿ]/.test(valor) && /\d/.test(valor)
+}
+
 async function enviarCadastro() {
   erro.value = ''
   sucesso.value = ''
 
   if (!nome.value || !email.value || !telefone.value || !senha.value || !confirmarSenha.value) {
     erro.value = 'Preencha todos os campos.'
+    return
+  }
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim())) {
+    erro.value = 'Informe um e-mail válido.'
+    return
+  }
+
+  if (telefone.value.replace(/\D/g, '').length < 10) {
+    erro.value = 'Informe um telefone válido, com DDD.'
+    return
+  }
+
+  if (!senhaValida(senha.value)) {
+    erro.value = 'A senha deve ter ao menos 8 caracteres, com uma letra e um número.'
     return
   }
 
@@ -61,13 +80,14 @@ async function enviarCadastro() {
       confirmacaoSenha: confirmarSenha.value,
     })
 
-    sucesso.value = 'Cadastro realizado com sucesso. Redirecionando para login...'
+    const emailCadastrado = email.value
+    sucesso.value = 'Cadastro realizado. Confira seu e-mail para confirmar a conta.'
     nome.value = ''
     email.value = ''
     telefone.value = ''
     senha.value = ''
     confirmarSenha.value = ''
-    await router.push('/login')
+    await router.push({ name: 'confirmar-email', query: { email: emailCadastrado } })
   } catch (e) {
     erro.value = e.message
   } finally {
@@ -84,10 +104,10 @@ async function enviarCadastro() {
       <p class="required-note"><span aria-hidden="true">*</span> Campos obrigatórios</p>
 
       <label for="nome">Nome completo <span class="required-mark" aria-hidden="true">*</span></label>
-      <input id="nome" v-model="nome" type="text" placeholder="Seu nome completo" required />
+      <input id="nome" v-model.trim="nome" type="text" placeholder="Seu nome completo" maxlength="120" required />
 
       <label for="email">E-mail <span class="required-mark" aria-hidden="true">*</span></label>
-      <input id="email" v-model="email" type="email" placeholder="seuemail@exemplo.com" required />
+      <input id="email" v-model.trim="email" type="email" placeholder="seuemail@exemplo.com" maxlength="254" required />
 
       <label for="telefone">Telefone <span class="required-mark" aria-hidden="true">*</span></label>
       <input
@@ -95,12 +115,15 @@ async function enviarCadastro() {
         v-model="telefone"
         type="tel"
         placeholder="(00) 00000-0000"
+        maxlength="20"
+        inputmode="tel"
         @input="aoDigitarTelefone"
         required
       />
 
       <label for="senha">Senha <span class="required-mark" aria-hidden="true">*</span></label>
-      <input id="senha" v-model="senha" type="password" placeholder="Crie uma senha" required />
+      <input id="senha" v-model="senha" type="password" placeholder="Crie uma senha" minlength="8" maxlength="72" autocomplete="new-password" required />
+      <small class="password-hint">Use ao menos 8 caracteres, incluindo uma letra e um número.</small>
 
       <label for="confirmarSenha">Confirmar senha <span class="required-mark" aria-hidden="true">*</span></label>
       <input
@@ -108,6 +131,9 @@ async function enviarCadastro() {
         v-model="confirmarSenha"
         type="password"
         placeholder="Repita sua senha"
+        minlength="8"
+        maxlength="72"
+        autocomplete="new-password"
         required
       />
 
@@ -165,6 +191,7 @@ label {
   color: #a4232f;
   font-weight: 700;
 }
+.password-hint { margin-top: -.35rem; color: #6e6166; font-size: .78rem; }
 
 input {
   border: 1px solid #eadfdb;

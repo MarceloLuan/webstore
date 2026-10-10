@@ -12,7 +12,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
@@ -36,7 +35,7 @@ public class ContaService {
         validarRequest(request);
 
         Usuario usuario = buscarUsuarioAutenticado();
-        String emailNormalizado = normalizarEmail(request.getEmail());
+        String emailNormalizado = DadosContaValidator.email(request.getEmail());
 
         usuarioRepository.findByEmail(emailNormalizado)
                 .filter(outro -> !outro.getId().equals(usuario.getId()))
@@ -44,11 +43,11 @@ public class ContaService {
                     throw new ResponseStatusException(HttpStatus.CONFLICT, "Já existe um usuário cadastrado com este e-mail.");
                 });
 
-        usuario.setNome(request.getNome().trim());
+        usuario.setNome(DadosContaValidator.nome(request.getNome()));
         usuario.setEmail(emailNormalizado);
-        usuario.setTelefone(request.getTelefone().trim());
+        usuario.setTelefone(DadosContaValidator.telefone(request.getTelefone()));
 
-        if (StringUtils.hasText(request.getSenha())) {
+        if (temDadosDeSenha(request)) {
             validarTrocaSenha(request, usuario);
             usuario.setSenha(passwordEncoder.encode(request.getSenha()));
         }
@@ -78,7 +77,7 @@ public class ContaService {
 
         String email = authentication.getName();
 
-        Usuario usuario = usuarioRepository.findByEmail(normalizarEmail(email))
+        Usuario usuario = usuarioRepository.findByEmail(DadosContaValidator.email(email))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuário não autenticado."));
 
         if (!usuario.getAtivo()) {
@@ -92,33 +91,25 @@ public class ContaService {
         if (request == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Dados da conta são obrigatórios.");
         }
-        if (!StringUtils.hasText(request.getNome())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Nome é obrigatório.");
-        }
-        if (!StringUtils.hasText(request.getEmail())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "E-mail é obrigatório.");
-        }
-        if (!StringUtils.hasText(request.getTelefone())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Telefone é obrigatório.");
-        }
+        DadosContaValidator.nome(request.getNome());
+        DadosContaValidator.email(request.getEmail());
+        DadosContaValidator.telefone(request.getTelefone());
     }
 
-    private String normalizarEmail(String email) {
-        return email.trim().toLowerCase();
+    private boolean temDadosDeSenha(AtualizarContaRequest request) {
+        return org.springframework.util.StringUtils.hasText(request.getSenhaAtual())
+                || org.springframework.util.StringUtils.hasText(request.getSenha())
+                || org.springframework.util.StringUtils.hasText(request.getConfirmacaoSenha());
     }
 
     private void validarTrocaSenha(AtualizarContaRequest request, Usuario usuario) {
-        if (!StringUtils.hasText(request.getSenhaAtual())) {
+        if (!org.springframework.util.StringUtils.hasText(request.getSenhaAtual())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe sua senha atual para trocar a senha.");
         }
         if (!passwordEncoder.matches(request.getSenhaAtual(), usuario.getSenha())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Senha atual incorreta.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Não foi possível confirmar a senha atual.");
         }
-        if (!StringUtils.hasText(request.getConfirmacaoSenha())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Confirme a nova senha.");
-        }
-        if (!request.getSenha().equals(request.getConfirmacaoSenha())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A nova senha e a confirmacao precisam ser iguais.");
-        }
+        DadosContaValidator.novaSenha(request.getSenha());
+        DadosContaValidator.confirmacaoSenha(request.getSenha(), request.getConfirmacaoSenha());
     }
 }

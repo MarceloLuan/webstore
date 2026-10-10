@@ -1,6 +1,7 @@
 package com.webstore.backend.model;
 
 import jakarta.persistence.*;
+import java.time.Instant;
 import java.util.Objects;
 
 @Entity
@@ -15,20 +16,32 @@ public abstract class Usuario {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     protected Long id;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 120)
     protected String nome;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false, unique = true, length = 254)
     protected String email;
 
-    @Column
+    @Column(length = 20)
     protected String telefone;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 60)
     protected String senha;
 
     @Column(nullable = false)
     protected Boolean ativo = true;
+
+    @Column(name = "email_confirmado", nullable = false, columnDefinition = "boolean default true")
+    protected Boolean emailConfirmado = true;
+
+    @Column(name = "email_confirmado_em")
+    protected Instant emailConfirmadoEm;
+
+    @Column(name = "sessoes_invalidas_antes_de")
+    protected Instant sessoesInvalidasAntesDe;
+
+    @Column(name = "versao_sessao", nullable = false, columnDefinition = "bigint default 0")
+    protected Long versaoSessao = 0L;
 
     public Usuario() {
     }
@@ -87,6 +100,23 @@ public abstract class Usuario {
 
     public void setAtivo(Boolean ativo) {
         this.ativo = ativo;
+    }
+
+    public Boolean getEmailConfirmado() { return emailConfirmado; }
+    public Instant getEmailConfirmadoEm() { return emailConfirmadoEm; }
+    public void aguardarConfirmacaoEmail() {
+        this.emailConfirmado = false;
+        this.emailConfirmadoEm = null;
+    }
+    public void confirmarEmail() {
+        this.emailConfirmado = true;
+        this.emailConfirmadoEm = Instant.now();
+    }
+    public Instant getSessoesInvalidasAntesDe() { return sessoesInvalidasAntesDe; }
+    public Long getVersaoSessao() { return versaoSessao == null ? 0L : versaoSessao; }
+    public void invalidarSessoes(Instant instante) {
+        this.sessoesInvalidasAntesDe = instante;
+        this.versaoSessao = getVersaoSessao() + 1;
     }
 
     @Override

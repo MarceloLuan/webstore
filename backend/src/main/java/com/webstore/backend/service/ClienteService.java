@@ -7,7 +7,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
@@ -27,16 +26,18 @@ public class ClienteService {
     public Cliente cadastrar(Cliente cliente, String confirmacaoSenha) {
         validarClienteParaCadastro(cliente, confirmacaoSenha);
 
-        String emailNormalizado = normalizarEmail(cliente.getEmail());
+        String emailNormalizado = DadosContaValidator.email(cliente.getEmail());
         if (usuarioRepository.existsByEmail(emailNormalizado)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Já existe um usuário cadastrado com este e-mail.");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Não foi possível concluir o cadastro com estes dados.");
         }
 
         cliente.setId(null);
+        cliente.setNome(DadosContaValidator.nome(cliente.getNome()));
         cliente.setEmail(emailNormalizado);
-        cliente.setTelefone(cliente.getTelefone().trim());
+        cliente.setTelefone(DadosContaValidator.telefone(cliente.getTelefone()));
         cliente.setSenha(passwordEncoder.encode(cliente.getSenha()));
         cliente.setAtivo(true);
+        cliente.aguardarConfirmacaoEmail();
         return clienteRepository.save(cliente);
     }
 
@@ -44,29 +45,11 @@ public class ClienteService {
         if (cliente == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Dados do cliente são obrigatórios.");
         }
-        if (!StringUtils.hasText(cliente.getNome())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Nome é obrigatório.");
-        }
-        if (!StringUtils.hasText(cliente.getEmail())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "E-mail é obrigatório.");
-        }
-        if (!StringUtils.hasText(cliente.getTelefone())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Telefone é obrigatório.");
-        }
-        if (!StringUtils.hasText(cliente.getSenha())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Senha é obrigatória.");
-        }
-        if (!StringUtils.hasText(confirmacaoSenha)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Confirme a senha.");
-        }
-        if (!cliente.getSenha().equals(confirmacaoSenha)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "As senhas precisam ser iguais.");
-        }
-    }
-
-
-    private String normalizarEmail(String email) {
-        return email.trim().toLowerCase();
+        DadosContaValidator.nome(cliente.getNome());
+        DadosContaValidator.email(cliente.getEmail());
+        DadosContaValidator.telefone(cliente.getTelefone());
+        DadosContaValidator.novaSenha(cliente.getSenha());
+        DadosContaValidator.confirmacaoSenha(cliente.getSenha(), confirmacaoSenha);
     }
 }
 

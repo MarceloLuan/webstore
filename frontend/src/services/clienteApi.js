@@ -63,6 +63,22 @@ export function cadastrarCliente({ nome, email, telefone, senha, confirmacaoSenh
   return apiPost('/clientes', { nome, email, telefone, senha, confirmacaoSenha }, { skipAuth: true })
 }
 
+export function confirmarEmail(token) {
+  return apiPost('/confirmacao-email/confirmar', { token }, { skipAuth: true })
+}
+
+export function reenviarConfirmacaoEmail(email) {
+  return apiPost('/confirmacao-email/reenviar', { email }, { skipAuth: true })
+}
+
+export function solicitarRecuperacaoSenha(email) {
+  return apiPost('/senha/esqueci', { email }, { skipAuth: true })
+}
+
+export function redefinirSenha({ token, senha, confirmacaoSenha }) {
+  return apiPost('/senha/redefinir', { token, senha, confirmacaoSenha }, { skipAuth: true })
+}
+
 export function buscarMinhaConta() {
   return apiRequest('/minha-conta')
 }

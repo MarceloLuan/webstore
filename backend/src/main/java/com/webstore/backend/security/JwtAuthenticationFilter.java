@@ -1,6 +1,7 @@
 package com.webstore.backend.security;
 
 import com.webstore.backend.service.UsuarioDetailsService;
+import com.webstore.backend.repository.UsuarioRepository;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -22,10 +23,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
     private final UsuarioDetailsService usuarioDetailsService;
+    private final UsuarioRepository usuarioRepository;
 
-    public JwtAuthenticationFilter(JwtUtil jwtUtil, UsuarioDetailsService usuarioDetailsService) {
+    public JwtAuthenticationFilter(JwtUtil jwtUtil, UsuarioDetailsService usuarioDetailsService,
+                                   UsuarioRepository usuarioRepository) {
         this.jwtUtil = jwtUtil;
         this.usuarioDetailsService = usuarioDetailsService;
+        this.usuarioRepository = usuarioRepository;
     }
 
     @Override
@@ -51,11 +55,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     return;
                 }
 
-                if (jwtUtil.validateToken(token, userDetails)) {
+                var usuario = usuarioRepository.findByEmail(username).orElseThrow(
+                        () -> new UsernameNotFoundException("Usuário não encontrado."));
+                if (jwtUtil.validateToken(token, userDetails, usuario.getVersaoSessao())) {
                     UsernamePasswordAuthenticationToken authentication =
                             new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
                     authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authentication);
+                } else {
+                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token JWT inválido ou expirado.");
+                    return;
                 }
             }
 

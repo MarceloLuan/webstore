@@ -63,6 +63,8 @@ async function enviarLogin() {
       <label for="senha">Senha <span class="required-mark" aria-hidden="true">*</span></label>
       <input id="senha" v-model="senha" type="password" placeholder="Digite sua senha" required />
 
+      <RouterLink class="forgot-link" to="/esqueci-senha">Esqueci minha senha</RouterLink>
+
       <button type="submit" :disabled="loading">
         {{ loading ? 'ENTRANDO...' : 'ENTRAR' }}
       </button>
@@ -163,6 +165,16 @@ button:disabled {
   font-weight: 700;
   text-decoration: none;
 }
+
+.forgot-link {
+  align-self: flex-end;
+  color: #6a1b2c;
+  font-size: 0.88rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.forgot-link:hover { text-decoration: underline; }
 
 .switch-text a:hover {
   text-decoration: underline;

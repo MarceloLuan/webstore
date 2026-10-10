@@ -57,6 +57,22 @@ function exibirErroSenha(message) {
   erroSenha.value = message
 }
 
+function senhaValida(valor) {
+  return valor.length >= 8 && /[A-Za-zÀ-ÿ]/.test(valor) && /\d/.test(valor)
+}
+
+function dadosPessoaisValidos() {
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.value.email.trim())) {
+    erro.value = 'Informe um e-mail válido.'
+    return false
+  }
+  if (form.value.telefone.replace(/\D/g, '').length < 10) {
+    erro.value = 'Informe um telefone válido, com DDD.'
+    return false
+  }
+  return true
+}
+
 async function carregarConta() {
   loading.value = true
   erro.value = ''
@@ -87,6 +103,7 @@ async function salvarConta() {
     erro.value = 'Preencha nome, e-mail e telefone.'
     return
   }
+  if (!dadosPessoaisValidos()) return
 
   const querTrocarSenha = Boolean(
     form.value.senhaAtual || form.value.senha || form.value.confirmacaoSenha,
@@ -99,6 +116,10 @@ async function salvarConta() {
     }
     if (!form.value.senha) {
       exibirErroSenha('Digite a nova senha.')
+      return
+    }
+    if (!senhaValida(form.value.senha)) {
+      exibirErroSenha('A senha deve ter ao menos 8 caracteres, com uma letra e um número.')
       return
     }
     if (!form.value.confirmacaoSenha) {
@@ -221,13 +242,13 @@ onMounted(() => {
 
         <form class="account-form" @submit.prevent="salvarConta">
           <label for="nome">Nome completo</label>
-          <input id="nome" v-model="form.nome" type="text" placeholder="Seu nome completo" />
+          <input id="nome" v-model.trim="form.nome" type="text" placeholder="Seu nome completo" maxlength="120" required />
 
           <label for="email">E-mail</label>
-          <input id="email" v-model="form.email" type="email" placeholder="seuemail@exemplo.com" />
+          <input id="email" v-model.trim="form.email" type="email" placeholder="seuemail@exemplo.com" maxlength="254" required />
 
           <label for="telefone">Telefone</label>
-          <input id="telefone" v-model="form.telefone" type="text" placeholder="(00) 00000-0000" />
+          <input id="telefone" v-model="form.telefone" type="tel" placeholder="(00) 00000-0000" maxlength="20" inputmode="tel" required />
 
           <div class="password-section">
             <div>
@@ -251,6 +272,8 @@ onMounted(() => {
               type="password"
               autocomplete="new-password"
               placeholder="Digite a nova senha"
+              minlength="8"
+              maxlength="72"
             />
 
             <label for="confirmacao-senha">Confirmar nova senha</label>
@@ -260,11 +283,14 @@ onMounted(() => {
               type="password"
               autocomplete="new-password"
               placeholder="Digite a nova senha novamente"
+              minlength="8"
+              maxlength="72"
             />
 
             <p v-if="erroSenha" class="password-error" role="alert" aria-live="polite">
               {{ erroSenha }}
             </p>
+            <p class="password-hint">Use ao menos 8 caracteres, incluindo uma letra e um número.</p>
           </div>
 
           <div class="form-actions">

@@ -34,6 +34,10 @@ public class DatabaseSchemaUpdater {
                 connection.setAutoCommit(false);
                 try (Statement statement = connection.createStatement()) {
                     statement.executeUpdate("ALTER TABLE produtos ADD COLUMN IF NOT EXISTS codigo varchar(60)");
+                    statement.executeUpdate("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS email_confirmado boolean NOT NULL DEFAULT true");
+                    statement.executeUpdate("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS email_confirmado_em timestamp with time zone");
+                    statement.executeUpdate("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS sessoes_invalidas_antes_de timestamp with time zone");
+                    statement.executeUpdate("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS versao_sessao bigint NOT NULL DEFAULT 0");
                     statement.executeUpdate("UPDATE produtos SET codigo = 'PROD-' || id WHERE codigo IS NULL OR btrim(codigo) = ''");
                     statement.executeUpdate("ALTER TABLE produtos ALTER COLUMN codigo SET NOT NULL");
                     statement.executeUpdate("CREATE UNIQUE INDEX IF NOT EXISTS ux_produtos_codigo ON produtos (codigo)");

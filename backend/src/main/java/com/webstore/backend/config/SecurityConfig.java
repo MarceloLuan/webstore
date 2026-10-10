@@ -26,7 +26,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(authenticationEntryPoint))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.POST, "/api/login", "/api/clientes").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/login", "/api/clientes", "/api/confirmacao-email/**", "/api/senha/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/pagamentos/webhook").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/pagamentos/retorno/**").permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/produtos", "/api/produtos/opcoes", "/api/produtos/*").permitAll()
