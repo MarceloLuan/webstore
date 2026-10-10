@@ -59,6 +59,10 @@ export function loginCliente({ email, senha }) {
   return apiPost('/login', { email, senha }, { skipAuth: true })
 }
 
+export function encerrarSessao() {
+  return apiRequest('/logout', { method: 'POST' })
+}
+
 export function cadastrarCliente({ nome, email, telefone, senha, confirmacaoSenha }) {
   return apiPost('/clientes', { nome, email, telefone, senha, confirmacaoSenha }, { skipAuth: true })
 }

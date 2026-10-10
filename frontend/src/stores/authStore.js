@@ -6,6 +6,7 @@ import {
   setAuthToken,
   setUser,
 } from '@/services/auth'
+import { encerrarSessao } from '@/services/clienteApi'
 
 const user = ref(getUser())
 const token = ref(getAuthToken())
@@ -25,10 +26,16 @@ function updateUser(updatedUser) {
   user.value = updatedUser
 }
 
-function logout() {
-  clearUser()
-  token.value = null
-  user.value = null
+async function logout() {
+  try {
+    if (token.value) await encerrarSessao()
+  } catch (error) {
+    console.warn('Could not revoke session on server', error)
+  } finally {
+    clearUser()
+    token.value = null
+    user.value = null
+  }
 }
 
 export function useAuthStore() {

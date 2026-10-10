@@ -201,9 +201,9 @@ async function handleDelete(product) {
   }
 }
 
-function logout() {
-  logoutUser()
-  router.push('/login')
+async function logout() {
+  await logoutUser()
+  await router.push('/login')
 }
 
 onMounted(async () => {

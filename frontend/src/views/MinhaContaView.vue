@@ -8,9 +8,9 @@ const router = useRouter()
 
 const { user, updateUser, logout } = useAuthStore()
 
-function sairDaConta() {
-  logout()
-  router.replace('/home')
+async function sairDaConta() {
+  await logout()
+  await router.replace('/home')
 }
 const loading = ref(true)
 const saving = ref(false)
@@ -83,7 +83,7 @@ async function carregarConta() {
     updateUser(conta)
   } catch (error) {
     if (isAuthError(error.message)) {
-      logout()
+      await logout()
       await router.replace('/login')
       return
     }
@@ -151,7 +151,7 @@ async function salvarConta() {
     limparCamposSenha()
 
     if (changedPassword || oldEmail !== contaAtualizada.email) {
-      logout()
+      await logout()
       await router.push('/login')
       return
     }
@@ -159,7 +159,7 @@ async function salvarConta() {
     sucesso.value = 'Conta atualizada com sucesso.'
   } catch (error) {
     if (isAuthError(error.message)) {
-      logout()
+      await logout()
       await router.replace('/login')
       return
     }
@@ -188,11 +188,11 @@ async function inativarConta() {
 
   try {
     await deletarMinhaConta()
-    logout()
-    router.push('/login')
+    await logout()
+    await router.push('/login')
   } catch (error) {
     if (isAuthError(error.message)) {
-      logout()
+      await logout()
       await router.replace('/login')
       return
     }
