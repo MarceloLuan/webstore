@@ -11,6 +11,9 @@ public class UsuarioResponse {
     private String telefone;
     private String role;
     private Boolean ativo;
+    private boolean possuiSenhaLocal;
+
+    public boolean isPossuiSenhaLocal() { return possuiSenhaLocal; }
 
     public UsuarioResponse() {
     }
@@ -26,7 +29,9 @@ public class UsuarioResponse {
 
     public static UsuarioResponse from(Usuario usuario) {
         String role = usuario instanceof Administrador ? "ADMIN" : "CLIENTE";
-        return new UsuarioResponse(usuario.getId(), usuario.getNome(), usuario.getEmail(), usuario.getTelefone(), role, usuario.getAtivo());
+        UsuarioResponse response = new UsuarioResponse(usuario.getId(), usuario.getNome(), usuario.getEmail(), usuario.getTelefone(), role, usuario.getAtivo());
+        response.possuiSenhaLocal = usuario.possuiSenhaLocal();
+        return response;
     }
 
     public Long getId() {

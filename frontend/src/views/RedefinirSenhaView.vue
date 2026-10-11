@@ -56,4 +56,5 @@ form { display:grid; gap:.6rem; } label { color:#5b1a26; font-weight:700; }
 input { min-height:44px; padding:.7rem .8rem; border:1px solid #eadfdb; border-radius:10px; font:inherit; }
 button { min-height:44px; margin-top:.35rem; border:0; border-radius:10px; background:#6a1b2c; color:#fff; font:inherit; font-weight:700; cursor:pointer; }
 button:disabled { opacity:.65; cursor:wait; }.message { padding:.75rem; border-radius:10px; }.success { background:#edf8f0; color:#24613a; }.error { background:#fff0f0; color:#8a1d1d; } a { color:#6a1b2c; font-weight:700; }
+@media (max-width:520px) { .password-card { width:100%; padding:1.2rem; border-radius:16px; } h1 { font-size:clamp(1.65rem,8vw,2rem); } input { min-height:46px; font-size:16px; } button { min-height:46px; } }
 </style>

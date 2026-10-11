@@ -202,11 +202,9 @@ class PagamentoIntegrationTests {
     @Test void endpointsMantemContratoEExigemDonoAutenticado() throws Exception {
         CheckoutResponse checkout = novoCheckout();
         String endpoint = "/api/pagamentos/pedidos/" + checkout.pedidoId() + "/tentativas";
-        String token = jwt.generateToken(org.springframework.security.core.userdetails.User
-                .withUsername(cliente.getEmail()).password("hash").roles("CLIENTE").build());
-        clientes.save(new Cliente("Outro", "outro@test.com", "11999999999", "hash"));
-        String outroToken = jwt.generateToken(org.springframework.security.core.userdetails.User
-                .withUsername("outro@test.com").password("hash").roles("CLIENTE").build());
+        String token = tokenPara(cliente);
+        Cliente outroCliente = clientes.save(new Cliente("Outro", "outro@test.com", "11999999999", "hash"));
+        String outroToken = tokenPara(outroCliente);
         var mvc = org.springframework.test.web.servlet.setup.MockMvcBuilders.webAppContextSetup(webContext)
                 .addFilters(securityFilter).build();
         SecurityContextHolder.clearContext();
@@ -781,8 +779,7 @@ class PagamentoIntegrationTests {
 
     @Test void apiExigeModalidadeEEnderecoParaEntrega() throws Exception {
         var mvc = org.springframework.test.web.servlet.setup.MockMvcBuilders.webAppContextSetup(webContext).addFilters(securityFilter).build();
-        String token = jwt.generateToken(org.springframework.security.core.userdetails.User
-                .withUsername(cliente.getEmail()).password("hash").roles("CLIENTE").build());
+        String token = tokenPara(cliente);
         SecurityContextHolder.clearContext();
         for (String payload : List.of("{}", "{\"modalidade\":\"INVALIDA\"}", "{\"modalidade\":\"ENTREGA\"}",
                 "{\"modalidade\":\"ENTREGA\",\"endereco\":{}}", "{\"modalidade\":\"RETIRADA\",\"endereco\":{}}")) {
@@ -796,8 +793,7 @@ class PagamentoIntegrationTests {
     @Test void apiPersisteEntregaEDevolveSomenteAoDono() throws Exception {
         var cotacaoId = service.cotarFrete(entrega(camposEndereco())).id();
         var mvc = org.springframework.test.web.servlet.setup.MockMvcBuilders.webAppContextSetup(webContext).addFilters(securityFilter).build();
-        String token = jwt.generateToken(org.springframework.security.core.userdetails.User
-                .withUsername(cliente.getEmail()).password("hash").roles("CLIENTE").build());
+        String token = tokenPara(cliente);
         SecurityContextHolder.clearContext();
         esperarCheckout("api-endereco");
         mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/pagamentos/checkout")
@@ -814,9 +810,8 @@ class PagamentoIntegrationTests {
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.modalidade").value("ENTREGA"))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.enderecoEntrega.cep").value("01310100"))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.enderecoEntrega.numero").value("1578"));
-        clientes.save(new Cliente("Outro", "endereco-outro@test.com", "11999999999", "hash"));
-        String outroToken = jwt.generateToken(org.springframework.security.core.userdetails.User
-                .withUsername("endereco-outro@test.com").password("hash").roles("CLIENTE").build());
+        Cliente outroCliente = clientes.save(new Cliente("Outro", "endereco-outro@test.com", "11999999999", "hash"));
+        String outroToken = tokenPara(outroCliente);
         mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/pagamentos/pedidos/" + id)
                         .header("Authorization", "Bearer " + outroToken))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isNotFound());
@@ -907,8 +902,7 @@ class PagamentoIntegrationTests {
     @Test void valoresEnviadosPeloNavegadorNaoAlteramFreteOuTotal() throws Exception {
         var cotacao = service.cotarFrete(entregaComFrete());
         var mvc = org.springframework.test.web.servlet.setup.MockMvcBuilders.webAppContextSetup(webContext).addFilters(securityFilter).build();
-        String token = jwt.generateToken(org.springframework.security.core.userdetails.User
-                .withUsername(cliente.getEmail()).password("hash").roles("CLIENTE").build());
+        String token = tokenPara(cliente);
         SecurityContextHolder.clearContext(); esperarCheckout("valores-forjados");
         mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/pagamentos/checkout")
                         .header("Authorization", "Bearer " + token).contentType(MediaType.APPLICATION_JSON).content("""
@@ -942,6 +936,11 @@ class PagamentoIntegrationTests {
 
     private void sincronizar(String id, String status, String referencia) {
         esperarPagamento(id, status, referencia, "100.00"); service.processarRetorno(id); server.verify(); server.reset();
+    }
+    private String tokenPara(Cliente usuario) {
+        var details = org.springframework.security.core.userdetails.User.withUsername(usuario.getEmail())
+                .password("hash").roles("CLIENTE").build();
+        return jwt.generateToken(details, usuario.getId(), usuario.getVersaoSessao());
     }
     private void esperarPagamento(String id, String status, String referencia, String valor) {
         server.expect(requestTo("https://api.mercadopago.com/v1/payments/" + id))

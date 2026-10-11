@@ -256,4 +256,10 @@ button:disabled {
 .sucesso {
   color: #176d33;
 }
+
+@media (max-width: 520px) {
+  .auth-card { width: 100%; padding: 1.2rem; border-radius: 16px; }
+  .auth-card input { min-height: 46px; font-size: 16px; }
+  .auth-card button { min-height: 46px; }
+}
 </style>

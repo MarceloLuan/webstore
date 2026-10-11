@@ -25,8 +25,12 @@ public abstract class Usuario {
     @Column(length = 20)
     protected String telefone;
 
-    @Column(nullable = false, length = 60)
+    @Column(length = 60)
     protected String senha;
+
+    public boolean possuiSenhaLocal() {
+        return senha != null && !senha.isBlank();
+    }
 
     @Column(nullable = false)
     protected Boolean ativo = true;

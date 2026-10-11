@@ -18,10 +18,13 @@ import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 @Transactional
 public class ConfirmacaoEmailService {
+    private static final Logger LOG = LoggerFactory.getLogger(ConfirmacaoEmailService.class);
     private static final SecureRandom RANDOM = new SecureRandom();
     private final ConfirmacaoEmailTokenRepository tokens;
     private final UsuarioRepository usuarios;
@@ -54,9 +57,13 @@ public class ConfirmacaoEmailService {
         } catch (ResponseStatusException invalido) {
             return;
         }
-        Usuario usuario = usuarios.findByEmail(emailNormalizado).orElse(null);
+        Usuario usuario = usuarios.findByEmailForUpdate(emailNormalizado).orElse(null);
         if (usuario == null || Boolean.TRUE.equals(usuario.getEmailConfirmado())) return;
-        emitir(usuario, true);
+        try {
+            emitir(usuario, true);
+        } catch (RuntimeException falha) {
+            LOG.warn("Falha ao enviar e-mail de confirmação solicitado.");
+        }
     }
 
     public void confirmar(String token) {
@@ -73,8 +80,7 @@ public class ConfirmacaoEmailService {
         Instant agora = Instant.now();
         ConfirmacaoEmailToken anterior = tokens.findFirstByUsuarioIdOrderByCriadoEmDesc(usuario.getId()).orElse(null);
         if (respeitarIntervalo && anterior != null && anterior.getCriadoEm().plus(intervaloReenvio).isAfter(agora)) {
-            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
-                    "Aguarde um momento antes de solicitar outro e-mail de confirmação.");
+            return;
         }
         if (anterior != null && anterior.disponivelEm(agora)) anterior.revogar(agora);
         String token = novoToken();

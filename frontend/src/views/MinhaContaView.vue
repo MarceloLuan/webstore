@@ -249,8 +249,11 @@ onMounted(() => {
 
           <label for="telefone">Telefone</label>
           <input id="telefone" v-model="form.telefone" type="tel" placeholder="(00) 00000-0000" maxlength="20" inputmode="tel" required />
+          <p v-if="!form.telefone" class="field-hint">
+            Adicione seu número de celular com DDD para completar seus dados de contato.
+          </p>
 
-          <div class="password-section">
+          <div v-if="user?.possuiSenhaLocal !== false" class="password-section">
             <div>
               <p class="password-title">Trocar senha</p>
               <p class="password-hint">Opcional. Preencha estes campos somente se quiser alterar sua senha.</p>
@@ -440,6 +443,13 @@ input:focus {
   border-color: #6a1b2c;
 }
 
+.field-hint {
+  margin: -0.25rem 0 0;
+  color: #8f5a67;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
 .password-section {
   display: grid;
   gap: 0.7rem;
@@ -593,5 +603,11 @@ input:focus {
     min-width: 0;
     width: 100%;
   }
+
+  .logout-button, .panel-header .secondary-button { width: 100%; min-height: 44px; }
+  .form-actions { display: grid; grid-template-columns: 1fr; }
+  .form-actions button { width: 100%; min-height: 46px; }
+  input { font-size: 16px; }
+  .info-list dd { overflow-wrap: anywhere; }
 }
 </style>

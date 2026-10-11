@@ -13,7 +13,6 @@ import org.springframework.stereotype.Component;
 import jakarta.annotation.PostConstruct;
 import java.security.Key;
 import java.util.Date;
-import java.time.Instant;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -41,11 +40,7 @@ public class JwtUtil {
         this.signingKey = Keys.hmacShaKeyFor(keyBytes);
     }
 
-    public String generateToken(UserDetails userDetails) {
-        return generateToken(userDetails, 0L);
-    }
-
-    public String generateToken(UserDetails userDetails, long versaoSessao) {
+    public String generateToken(UserDetails userDetails, long usuarioId, long versaoSessao) {
         Date now = new Date();
         Date expiration = new Date(now.getTime() + expirationMs);
         List<String> roles = userDetails.getAuthorities().stream()
@@ -53,7 +48,7 @@ public class JwtUtil {
                 .collect(Collectors.toList());
 
         return Jwts.builder()
-                .setSubject(userDetails.getUsername())
+                .setSubject(Long.toString(usuarioId))
                 .claim("roles", roles)
                 .claim("sessionVersion", versaoSessao)
                 .setIssuedAt(now)
@@ -62,19 +57,15 @@ public class JwtUtil {
                 .compact();
     }
 
-    public String extractUsername(String token) {
-        return getClaims(token).getSubject();
+    public long extractUserId(String token) {
+        return Long.parseLong(getClaims(token).getSubject());
     }
 
-    public boolean validateToken(String token, UserDetails userDetails) {
-        return validateToken(token, userDetails, 0L);
-    }
-
-    public boolean validateToken(String token, UserDetails userDetails, long versaoSessao) {
-        String username = extractUsername(token);
+    public boolean validateToken(String token, long usuarioId, long versaoSessao) {
+        long tokenUsuarioId = extractUserId(token);
         Number versaoToken = getClaims(token).get("sessionVersion", Number.class);
         long versao = versaoToken == null ? 0L : versaoToken.longValue();
-        return username.equalsIgnoreCase(userDetails.getUsername()) && !isTokenExpired(token) && versao == versaoSessao;
+        return tokenUsuarioId == usuarioId && !isTokenExpired(token) && versao == versaoSessao;
     }
 
     private boolean isTokenExpired(String token) {

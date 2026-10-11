@@ -33,6 +33,7 @@ public class DatabaseSchemaUpdater {
 
                 connection.setAutoCommit(false);
                 try (Statement statement = connection.createStatement()) {
+                    statement.executeUpdate("ALTER TABLE usuarios ALTER COLUMN senha DROP NOT NULL");
                     statement.executeUpdate("ALTER TABLE produtos ADD COLUMN IF NOT EXISTS codigo varchar(60)");
                     statement.executeUpdate("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS email_confirmado boolean NOT NULL DEFAULT true");
                     statement.executeUpdate("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS email_confirmado_em timestamp with time zone");

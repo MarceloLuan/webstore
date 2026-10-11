@@ -88,7 +88,7 @@ class JwtIntegrationTests {
     }
 
     @Test
-    void usuarioInativoDeveRetornar403() throws Exception {
+    void usuarioInativoDeveInvalidarTokenCom401() throws Exception {
         Cliente cliente = usuarioRepository.save(new Cliente("Cliente Teste", "cliente@test.com", "11999999999", passwordEncoder.encode("123456")));
         String token = obterToken("cliente@test.com", "123456");
 
@@ -97,7 +97,21 @@ class JwtIntegrationTests {
 
         mockMvc.perform(get("/api/minha-conta")
                         .header("Authorization", "Bearer " + token))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void logoutNoServidorDeveImpedirReutilizacaoDoToken() throws Exception {
+        usuarioRepository.save(new Cliente("Cliente Teste", "cliente@test.com", "11999999999", passwordEncoder.encode("123456")));
+        String token = obterToken("cliente@test.com", "123456");
+
+        mockMvc.perform(post("/api/logout")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/minha-conta")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test

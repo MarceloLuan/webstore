@@ -1,8 +1,9 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, onBeforeUnmount, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { RouterLink } from 'vue-router'
-import { loginCliente } from '@/services/clienteApi'
+import { loginCliente, loginGoogle } from '@/services/clienteApi'
+import { carregarGoogleIdentity } from '@/services/googleIdentity'
 import { useAuthStore } from '@/stores/authStore'
 
 const router = useRouter()
@@ -13,6 +14,43 @@ const senha = ref('')
 const loading = ref(false)
 const erro = ref('')
 const sucesso = ref('')
+const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim()
+const googleButton = ref(null)
+const googleErro = ref('')
+let mounted = false
+
+async function receberGoogle(response) {
+  if (!mounted || loading.value) return
+  erro.value = ''
+  sucesso.value = ''
+  loading.value = true
+  try {
+    if (!response?.credential) throw new Error('O Google não retornou uma credencial. Tente novamente.')
+    const session = await loginGoogle(response.credential)
+    if (!mounted) return
+    setSession(session.token, session.user)
+    await router.push(redirectPath.value)
+  } catch (error) {
+    if (mounted) erro.value = error.message || 'Não foi possível entrar com Google.'
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(async () => {
+  mounted = true
+  if (!googleClientId) return
+  try {
+    const google = await carregarGoogleIdentity()
+    if (!mounted) return
+    google.initialize({ client_id: googleClientId, callback: receberGoogle, auto_select: false, ux_mode: 'popup' })
+    google.renderButton(googleButton.value, { type: 'standard', theme: 'outline', size: 'large', text: 'signin_with', locale: 'pt-BR' })
+  } catch (error) {
+    if (mounted) googleErro.value = error.message
+  }
+})
+
+onBeforeUnmount(() => { mounted = false })
 const redirectPath = computed(() => route.query.redirect?.toString() || '/home')
 
 async function enviarLogin() {
@@ -70,7 +108,13 @@ async function enviarLogin() {
       </button>
     </form>
 
-    <p v-if="erro" class="feedback erro">{{ erro }}</p>
+    <div v-if="googleClientId" class="google-login" :inert="loading">
+      <p class="google-divider">ou</p>
+      <div ref="googleButton"></div>
+      <p v-if="googleErro" class="feedback erro" role="alert">{{ googleErro }}</p>
+    </div>
+
+    <p v-if="erro" class="feedback erro" role="alert">{{ erro }}</p>
     <p v-if="sucesso" class="feedback sucesso">{{ sucesso }}</p>
 
     <p class="switch-text">
@@ -81,6 +125,9 @@ async function enviarLogin() {
 </template>
 
 <style scoped>
+.google-login { display: grid; justify-items: center; gap: 0.8rem; margin-top: 1rem; }
+.google-divider { margin: 0; color: #6e6166; }
+
 .auth-card {
   width: min(92vw, 430px);
   background: #ffffff;
@@ -192,5 +239,14 @@ button:disabled {
 
 .sucesso {
   color: #176d33;
+}
+
+@media (max-width: 520px) {
+  .auth-card { width: 100%; padding: 1.2rem; border-radius: 16px; }
+  .auth-card input { min-height: 46px; font-size: 16px; }
+  .auth-card button { min-height: 46px; }
+  .google-login { min-width: 0; overflow: hidden; }
+  .google-login > div { max-width: 100%; }
+  .forgot-link { min-height: 44px; display: inline-flex; align-items: center; }
 }
 </style>

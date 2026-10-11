@@ -46,7 +46,7 @@ class ConfirmacaoEmailServiceTests {
     }
 
     @Test
-    void limitaReenvioEmSequencia() {
+    void intervaloDeReenvioMantemRespostaIndistinguivel() {
         ConfirmacaoEmailTokenRepository tokens = mock(ConfirmacaoEmailTokenRepository.class);
         UsuarioRepository usuarios = mock(UsuarioRepository.class);
         EmailConfirmacaoMailer mailer = mock(EmailConfirmacaoMailer.class);
@@ -56,12 +56,10 @@ class ConfirmacaoEmailServiceTests {
         cliente.setEmail("cliente@exemplo.com");
         cliente.aguardarConfirmacaoEmail();
         ConfirmacaoEmailToken anterior = new ConfirmacaoEmailToken(cliente, "a".repeat(64), java.time.Instant.now(), java.time.Instant.now().plusSeconds(3600));
-        when(usuarios.findByEmail("cliente@exemplo.com")).thenReturn(Optional.of(cliente));
+        when(usuarios.findByEmailForUpdate("cliente@exemplo.com")).thenReturn(Optional.of(cliente));
         when(tokens.findFirstByUsuarioIdOrderByCriadoEmDesc(2L)).thenReturn(Optional.of(anterior));
 
-        ResponseStatusException erro = assertThrows(ResponseStatusException.class,
-                () -> service.reenviar("cliente@exemplo.com"));
-        assertEquals(429, erro.getStatusCode().value());
+        assertDoesNotThrow(() -> service.reenviar("cliente@exemplo.com"));
         verifyNoInteractions(mailer);
     }
 }

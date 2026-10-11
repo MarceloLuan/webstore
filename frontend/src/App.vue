@@ -294,9 +294,16 @@ onBeforeUnmount(() => {
   box-sizing: border-box;
 }
 
+html {
+  min-width: 320px;
+  overflow-x: hidden;
+  text-size-adjust: 100%;
+}
+
 body {
   margin: 0;
   min-height: 100vh;
+  overflow-x: hidden;
   font-family: 'Avenir Next', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background:
     radial-gradient(circle at top right, #f8f2ec 0%, #f3e8df 58%),
@@ -306,6 +313,18 @@ body {
 
 #app {
   min-height: 100vh;
+}
+
+img,
+svg {
+  max-width: 100%;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
 }
 
 .app-shell {
@@ -633,9 +652,11 @@ body {
   gap: clamp(0.65rem, 2.1vw, 2rem);
   padding: 0.55rem 0 0.05rem;
   border-top: 1px solid rgba(106, 27, 44, 0.06);
+  scrollbar-width: thin;
 }
 
 .nav-link {
+  flex: 0 0 auto;
   color: #4d3d42;
   text-decoration: none;
   font-size: 0.86rem;
@@ -658,6 +679,10 @@ body {
   justify-content: center;
   align-items: flex-start;
   padding: 1.1rem 0.5rem 2rem;
+}
+
+.content-area > * {
+  min-width: 0;
 }
 
 @media (max-width: 960px) {
@@ -719,6 +744,11 @@ body {
   }
 }
 @media (max-width: 600px) {
+  .site-header {
+    width: calc(100% - 0.5rem);
+    margin-top: 0.25rem;
+    border-radius: 16px;
+  }
   .brand-logo { max-width: 72px; }
   .header-actions { gap: .3rem; }
   .header-actions .icon-button { width: 32px; height: 36px; }
@@ -729,5 +759,15 @@ body {
     display: flex; flex-wrap: wrap; justify-content: center; gap: .3rem .8rem;
     border-left: 0; padding-left: 0; font-size: .62rem;
   }
+  .filter-popover { width: min(340px, calc(100vw - 1rem)); }
+  input, select, textarea { font-size: 16px; }
+  .content-area { padding: 0.65rem 0.25rem 1.25rem; }
+}
+
+@media (max-width: 420px) {
+  .header-benefits { display: none; }
+  .welcome-account { max-width: 108px; }
+  .account-links { gap: 0.15rem 0.45rem; }
+  .site-nav { margin-top: 0.15rem; }
 }
 </style>

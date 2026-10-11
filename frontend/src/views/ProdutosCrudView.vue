@@ -498,5 +498,11 @@ h1 {
     padding: 1rem;
     border-radius: 18px;
   }
+
+  .hero-actions { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
+  .hero-actions button { min-height: 44px; }
+  .panel-heading { flex-direction: column; }
+  .counter-compact { overflow-wrap: anywhere; }
+  .search-field input { font-size: 16px; }
 }
 </style>

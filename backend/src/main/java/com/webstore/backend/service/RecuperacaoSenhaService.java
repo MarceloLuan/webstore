@@ -50,7 +50,7 @@ public class RecuperacaoSenhaService {
         try { normalizado = DadosContaValidator.email(email); }
         catch (ResponseStatusException invalido) { throw invalido; }
         Usuario usuario = usuarios.findByEmailForUpdate(normalizado).orElse(null);
-        if (usuario == null || !Boolean.TRUE.equals(usuario.getAtivo())) return;
+        if (usuario == null || !Boolean.TRUE.equals(usuario.getAtivo()) || !usuario.possuiSenhaLocal()) return;
         Instant agora = Instant.now();
         RecuperacaoSenhaToken anterior = tokens.findFirstByUsuarioIdOrderByCriadoEmDesc(usuario.getId()).orElse(null);
         if (anterior != null && anterior.getCriadoEm().plus(intervaloReenvio).isAfter(agora)) return;
@@ -61,7 +61,7 @@ public class RecuperacaoSenhaService {
             mailer.enviar(usuario.getEmail(), frontendUrl + "/redefinir-senha?token="
                     + URLEncoder.encode(token, StandardCharsets.UTF_8));
         } catch (RuntimeException falha) {
-            LOG.warn("Falha ao enviar e-mail de recuperação de senha.", falha);
+            LOG.warn("Falha ao enviar e-mail de recuperação de senha solicitado.");
         }
     }
 
@@ -73,6 +73,7 @@ public class RecuperacaoSenhaService {
         Instant agora = Instant.now();
         if (!registro.disponivelEm(agora) || !Boolean.TRUE.equals(registro.getUsuario().getAtivo())) throw tokenInvalido();
         Usuario usuario = registro.getUsuario();
+        if (!usuario.possuiSenhaLocal()) throw tokenInvalido();
         usuario.setSenha(passwordEncoder.encode(senha));
         usuario.invalidarSessoes(agora);
         registro.utilizar(agora);

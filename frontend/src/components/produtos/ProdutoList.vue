@@ -177,7 +177,12 @@ strong {
 
 @media (max-width: 900px) {
   .product-list-shell:not(.admin) {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
+
+@media (max-width: 560px) {
+  .product-list-shell:not(.admin) { grid-template-columns: 1fr; }
+  .actions-row button { flex: 1 1 120px; min-height: 44px; }
 }
 </style>

@@ -45,34 +45,34 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String token = authorizationHeader.substring(7);
 
         try {
-            String username = jwtUtil.extractUsername(token);
+            long usuarioId = jwtUtil.extractUserId(token);
 
-            if (StringUtils.hasText(username) && SecurityContextHolder.getContext().getAuthentication() == null) {
-                UserDetails userDetails = usuarioDetailsService.loadUserByUsername(username);
+            if (SecurityContextHolder.getContext().getAuthentication() == null) {
+                var usuario = usuarioRepository.findById(usuarioId).orElseThrow(
+                        () -> new UsernameNotFoundException("Usuário não encontrado."));
+                UserDetails userDetails = usuarioDetailsService.from(usuario);
 
                 if (!userDetails.isEnabled()) {
-                    response.sendError(HttpServletResponse.SC_FORBIDDEN, "Usuário inativo.");
+                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Sessão inválida ou expirada.");
                     return;
                 }
 
-                var usuario = usuarioRepository.findByEmail(username).orElseThrow(
-                        () -> new UsernameNotFoundException("Usuário não encontrado."));
-                if (jwtUtil.validateToken(token, userDetails, usuario.getVersaoSessao())) {
+                if (jwtUtil.validateToken(token, usuario.getId(), usuario.getVersaoSessao())) {
                     UsernamePasswordAuthenticationToken authentication =
                             new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
                     authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authentication);
                 } else {
-                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token JWT inválido ou expirado.");
+                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Sessão inválida ou expirada.");
                     return;
                 }
             }
 
             filterChain.doFilter(request, response);
         } catch (UsernameNotFoundException ex) {
-            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Usuário não autenticado.");
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Sessão inválida ou expirada.");
         } catch (JwtException | IllegalArgumentException ex) {
-            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token JWT inválido ou expirado.");
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Sessão inválida ou expirada.");
         }
     }
 }

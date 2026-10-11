@@ -340,7 +340,7 @@ p {
 
 @media (max-width: 960px) {
   .product-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .section-heading {
@@ -357,5 +357,9 @@ p {
   .product-grid {
     gap: 0.75rem;
   }
+}
+
+@media (max-width: 480px) {
+  .product-grid { grid-template-columns: 1fr; }
 }
 </style>

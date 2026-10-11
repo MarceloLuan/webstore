@@ -188,5 +188,16 @@ li > span:first-child { display: grid; gap: .2rem; }
 .order-card footer button:focus-visible { outline: 3px solid #c9aa73; outline-offset: 3px; }
 .state-card { padding: 2rem; text-align: center; color: #65565a; }
 .error { color: #8a1d1d; }
+@media (max-width: 820px) and (min-width: 651px) { .order-card > header { grid-template-columns: 1fr 1fr; } .status-stack { grid-column: 1 / -1; justify-items: start; } .order-details { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 650px) { .orders-header { align-items: flex-start; flex-direction: column; } .order-card > header, .order-details { grid-template-columns: 1fr; } .status-stack { justify-items: start; } }
+@media (max-width: 480px) {
+  .orders-page { width: 100%; }
+  .orders-header, .order-card, .state-card { border-radius: 16px; }
+  .orders-header, .order-card > header, .detail-block, .order-card footer { padding: .9rem; }
+  .header-actions { width: 100%; flex-wrap: wrap; }
+  .header-actions button { flex: 1 1 120px; min-height: 44px; }
+  li { align-items: flex-start; flex-direction: column; gap: .45rem; }
+  li > span:last-child { align-self: flex-end; }
+  .order-card footer button { width: 100%; margin-right: 0; min-height: 44px; }
+}
 </style>

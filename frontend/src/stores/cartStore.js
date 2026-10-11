@@ -25,7 +25,7 @@ const isEmpty = computed(() => !cart.value.itens?.length)
 function applyCart(payload) {
   cart.value = {
     ...emptyCart(),
-    ...(payload || {}),
+    ...payload,
     itens: Array.isArray(payload?.itens) ? payload.itens : [],
     quantidadeTotal: Number(payload?.quantidadeTotal || 0),
     subtotal: Number(payload?.subtotal || 0),

@@ -2,7 +2,7 @@ package com.webstore.backend.controller;
 
 import com.webstore.backend.controller.dto.RedefinirSenhaRequest;
 import com.webstore.backend.controller.dto.SolicitarRecuperacaoSenhaRequest;
-import com.webstore.backend.service.RecuperacaoSenhaRateLimiter;
+import com.webstore.backend.service.RateLimitService;
 import com.webstore.backend.service.RecuperacaoSenhaService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
@@ -14,15 +14,16 @@ import java.util.Map;
 public class RecuperacaoSenhaController {
     private static final String RESPOSTA_GENERICA = "Se existir uma conta com esse e-mail, enviaremos um link para redefinir a senha.";
     private final RecuperacaoSenhaService recuperacao;
-    private final RecuperacaoSenhaRateLimiter limiter;
-    public RecuperacaoSenhaController(RecuperacaoSenhaService recuperacao, RecuperacaoSenhaRateLimiter limiter) {
+    private final RateLimitService limiter;
+    public RecuperacaoSenhaController(RecuperacaoSenhaService recuperacao, RateLimitService limiter) {
         this.recuperacao = recuperacao; this.limiter = limiter;
     }
     @PostMapping("/esqueci")
     public ResponseEntity<Map<String, String>> solicitar(@RequestBody(required = false) SolicitarRecuperacaoSenhaRequest request,
                                                          HttpServletRequest httpRequest) {
-        limiter.verificar(httpRequest.getRemoteAddr());
-        recuperacao.solicitar(request == null ? null : request.email());
+        String email = request == null ? null : request.email();
+        limiter.verificarRecuperacao(httpRequest.getRemoteAddr(), email);
+        recuperacao.solicitar(email);
         return ResponseEntity.ok(Map.of("message", RESPOSTA_GENERICA));
     }
     @PostMapping("/redefinir")

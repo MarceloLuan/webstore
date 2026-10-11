@@ -13,6 +13,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import java.time.Instant;
 
 @Service
 @Transactional
@@ -50,6 +51,7 @@ public class ContaService {
         if (temDadosDeSenha(request)) {
             validarTrocaSenha(request, usuario);
             usuario.setSenha(passwordEncoder.encode(request.getSenha()));
+            usuario.invalidarSessoes(Instant.now());
         }
 
         return UsuarioResponse.from(usuarioRepository.save(usuario));
@@ -63,6 +65,13 @@ public class ContaService {
         }
 
         usuario.setAtivo(false);
+        usuario.invalidarSessoes(Instant.now());
+        usuarioRepository.save(usuario);
+    }
+
+    public void encerrarSessoes() {
+        Usuario usuario = buscarUsuarioAutenticado();
+        usuario.invalidarSessoes(Instant.now());
         usuarioRepository.save(usuario);
     }
 
@@ -103,6 +112,10 @@ public class ContaService {
     }
 
     private void validarTrocaSenha(AtualizarContaRequest request, Usuario usuario) {
+        if (!usuario.possuiSenhaLocal()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Esta conta utiliza login externo e não possui senha local.");
+        }
         if (!org.springframework.util.StringUtils.hasText(request.getSenhaAtual())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe sua senha atual para trocar a senha.");
         }

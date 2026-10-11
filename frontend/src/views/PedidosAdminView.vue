@@ -117,4 +117,14 @@ header h1 { margin: .2rem 0; font: 600 clamp(2rem, 5vw, 3rem)/1.1 Georgia, serif
 .detail-heading,.two-columns,.totals p { display: flex; justify-content: space-between; gap: 1rem; } .detail h2 { margin: .15rem 0 1rem; } .detail h3 { margin: 1rem 0 .4rem; font-size: .95rem; } .two-columns > div { flex: 1; } .detail p { margin: .2rem 0; color: #786b6f; } address { font-style: normal; line-height: 1.6; } .products { display: grid; gap: .4rem; margin: 0; padding: 0; list-style: none; } .products li { display: flex; justify-content: space-between; gap: 1rem; padding: .6rem 0; border-bottom: 1px solid #f0e7e8; } .totals { margin-top: 1rem; padding-top: .7rem; border-top: 1px solid #eadde0; } .totals p { color: #786b6f; } .totals p:last-of-type { color: #5b1a26; font-size: 1.1rem; } .totals small { color: #806f73; }
 .delivery-editor { margin-top: 1rem; padding-top: .8rem; border-top: 1px solid #eadde0; } select,input,.delivery-editor button { min-height: 42px; padding: .6rem .8rem; border: 1px solid #cdbbc0; border-radius: 9px; font: inherit; } .delivery-editor select,.delivery-editor input { width: 100%; color: #5b1a26; background: #fff; }.delivery-editor label { display: block; margin: .8rem 0 .35rem; color: #786b6f; font-size: .85rem; font-weight: 700; } .tracking-hint { margin-top: .45rem !important; color: #755713 !important; font-size: .8rem; } .delivery-editor button { margin-top: .6rem; border: 0; background: #6a1b2c; color: #fff; font-weight: 700; cursor: pointer; } .delivery-editor button:disabled { opacity: .6; } .error { padding: .8rem; border-radius: 10px; background: #fff0f0; color: #8a1d1d; } .empty { color: #786b6f; }
 @media (max-width: 800px) { .orders-layout { grid-template-columns: 1fr; } }
+@media (max-width: 560px) {
+  .admin-orders { width: calc(100% - .5rem); }
+  .card { padding: .9rem; border-radius: 16px; }
+  .order-row, .detail-heading, .two-columns, .products li { align-items: flex-start; flex-direction: column; }
+  .money { text-align: left; }
+  .detail-heading > strong { font-size: 1.15rem; }
+  .products li strong { align-self: flex-end; }
+  .delivery-editor button, .refresh-button { width: 100%; min-height: 44px; }
+  select, input { font-size: 16px; }
+}
 </style>

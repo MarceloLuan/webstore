@@ -59,6 +59,10 @@ export function loginCliente({ email, senha }) {
   return apiPost('/login', { email, senha }, { skipAuth: true })
 }
 
+export function loginGoogle(credential) {
+  return apiPost('/login/google', { credential }, { skipAuth: true })
+}
+
 export function encerrarSessao() {
   return apiRequest('/logout', { method: 'POST' })
 }

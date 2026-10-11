@@ -8,6 +8,7 @@ import com.webstore.backend.controller.dto.UsuarioResponse;
 import com.webstore.backend.model.Cliente;
 import com.webstore.backend.service.ClienteService;
 import com.webstore.backend.service.ConfirmacaoEmailService;
+import com.webstore.backend.service.RateLimitService;
 import com.webstore.backend.repository.UsuarioRepository;
 import com.webstore.backend.security.JwtUtil;
 import org.springframework.http.HttpStatus;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import jakarta.servlet.http.HttpServletRequest;
 
 @RestController
 @RequestMapping("/api")
@@ -30,21 +32,26 @@ public class ClienteController {
     private final JwtUtil jwtUtil;
     private final UsuarioRepository usuarioRepository;
     private final ConfirmacaoEmailService confirmacaoEmailService;
+    private final RateLimitService rateLimit;
 
     public ClienteController(ClienteService clienteService,
                              AuthenticationManager authenticationManager,
                              JwtUtil jwtUtil,
                              UsuarioRepository usuarioRepository,
-                             ConfirmacaoEmailService confirmacaoEmailService) {
+                             ConfirmacaoEmailService confirmacaoEmailService,
+                             RateLimitService rateLimit) {
         this.clienteService = clienteService;
         this.authenticationManager = authenticationManager;
         this.jwtUtil = jwtUtil;
         this.usuarioRepository = usuarioRepository;
         this.confirmacaoEmailService = confirmacaoEmailService;
+        this.rateLimit = rateLimit;
     }
 
     @PostMapping("/clientes")
-    public ResponseEntity<ClienteResponse> cadastrar(@RequestBody ClienteCadastroRequest request) {
+    public ResponseEntity<ClienteResponse> cadastrar(@RequestBody ClienteCadastroRequest request,
+                                                      HttpServletRequest httpRequest) {
+        rateLimit.verificarCadastro(httpRequest.getRemoteAddr());
         Cliente cliente = new Cliente();
         cliente.setNome(request.getNome());
         cliente.setEmail(request.getEmail());
@@ -57,7 +64,9 @@ public class ClienteController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(@RequestBody ClienteLoginRequest request) {
+    public ResponseEntity<LoginResponse> login(@RequestBody ClienteLoginRequest request,
+                                                HttpServletRequest httpRequest) {
+        rateLimit.verificarLogin(httpRequest.getRemoteAddr(), request == null ? null : request.getEmail());
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getSenha())
         );
@@ -69,7 +78,7 @@ public class ClienteController {
                         throw new org.springframework.web.server.ResponseStatusException(HttpStatus.FORBIDDEN,
                                 "Confirme seu e-mail antes de entrar na conta.");
                     }
-                    String token = jwtUtil.generateToken(userDetails, usuario.getVersaoSessao());
+                    String token = jwtUtil.generateToken(userDetails, usuario.getId(), usuario.getVersaoSessao());
                     return ResponseEntity.ok(new LoginResponse(token, UsuarioResponse.from(usuario)));
                 })
                 .orElseThrow(() -> new IllegalStateException("Usuário autenticado não encontrado."));
