@@ -11,6 +11,7 @@ import ProdutoDetalhesView from '@/views/ProdutoDetalhesView.vue'
 import CarrinhoView from '@/views/CarrinhoView.vue'
 import MeusPedidosView from '@/views/MeusPedidosView.vue'
 import PedidosAdminView from '@/views/PedidosAdminView.vue'
+import RelatoriosAdminView from '@/views/RelatoriosAdminView.vue'
 import { getUser, isAuthenticated } from '@/services/auth'
 
 const router = createRouter({
@@ -71,6 +72,12 @@ const router = createRouter({
       path: '/pedidos',
       name: 'pedidos-admin',
       component: PedidosAdminView,
+      meta: { requiresAuth: true, roles: ['ADMIN'] },
+    },
+    {
+      path: '/relatorios',
+      name: 'relatorios-admin',
+      component: RelatoriosAdminView,
       meta: { requiresAuth: true, roles: ['ADMIN'] },
     },
     {

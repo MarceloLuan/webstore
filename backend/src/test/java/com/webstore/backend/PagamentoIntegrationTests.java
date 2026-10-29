@@ -280,6 +280,40 @@ class PagamentoIntegrationTests {
         assertThat(estoque()).isEqualTo(4);
     }
 
+    @Test void pendenteDepoisAprovadoConsomeReservaUmaVez() {
+        CheckoutResponse checkout = novoCheckout();
+        String ref = "tentativa-" + tentativaAtual(checkout.pedidoId());
+        sincronizar("9901", "pending", ref);
+        assertThat(estoque()).isEqualTo(5);
+        assertThat(pedidos.findById(checkout.pedidoId()).orElseThrow().getStatus()).isEqualTo(PedidoStatus.PENDENTE);
+        sincronizar("9901", "approved", ref);
+        sincronizar("9901", "approved", ref);
+        assertThat(estoque()).isEqualTo(4);
+        assertThat(tamanhos.findById(variacaoId).orElseThrow().getQuantidadeReservada()).isZero();
+        assertThat(pedidos.findById(checkout.pedidoId()).orElseThrow().getStatus()).isEqualTo(PedidoStatus.PAGO);
+    }
+
+    @Test void assinaturaForjadaNaoConsultaProvedorNemAlteraReserva() {
+        CheckoutResponse checkout = novoCheckout();
+        assertThatThrownBy(() -> service.processarWebhook("9902", "ts=123,v1=" + "0".repeat(64), "forjado"))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED));
+        assertThat(estoque()).isEqualTo(5);
+        assertThat(pedidos.findById(checkout.pedidoId()).orElseThrow().getStatus()).isEqualTo(PedidoStatus.AGUARDANDO_PAGAMENTO);
+        assertThat(tamanhos.findById(variacaoId).orElseThrow().getQuantidadeReservada()).isEqualTo(1);
+    }
+
+    @Test void estoqueReduzidoDepoisDaCotacaoImpedeCheckoutSemCobranca() {
+        CheckoutRequest request = retirada();
+        var cotacao = service.cotarFrete(request);
+        jdbc.update("update produto_tamanhos set quantidade = 0 where id = ?", variacaoId);
+        assertThatThrownBy(() -> service.criarCheckout(new CheckoutRequest(request.modalidade(), request.endereco(), cotacao.id())))
+                .isInstanceOf(ResponseStatusException.class);
+        assertThat(pedidos.count()).isZero();
+        assertThat(tentativas.count()).isZero();
+        assertThat(tamanhos.findById(variacaoId).orElseThrow().getQuantidadeReservada()).isZero();
+    }
+
     @Test void webhookSemAssinaturaNaoConsultaProvedorNemAlteraPedido() {
         CheckoutResponse checkout = novoCheckout();
         assertThatThrownBy(() -> service.processarWebhook("831", null, null)).isInstanceOf(ResponseStatusException.class)

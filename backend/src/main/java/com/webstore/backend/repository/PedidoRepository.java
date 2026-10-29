@@ -11,6 +11,7 @@ import jakarta.persistence.LockModeType;
 
 import java.util.Optional;
 import java.util.List;
+import java.time.LocalDateTime;
 
 public interface PedidoRepository extends JpaRepository<Pedido, Long> {
     @Query("select p.id from Pedido p where p.reservaStatus = com.webstore.backend.model.ReservaStatus.ATIVA and p.reservaExpiraEm <= :agora order by p.id")
@@ -29,4 +30,12 @@ public interface PedidoRepository extends JpaRepository<Pedido, Long> {
 
     @EntityGraph(attributePaths = {"itens"})
     List<Pedido> findAllByClienteIdOrderByCriadoEmDesc(Long clienteId);
+
+    @EntityGraph(attributePaths = {"itens", "itens.produtoTamanho", "itens.produtoTamanho.produto"})
+    List<Pedido> findAllByCriadoEmGreaterThanEqualAndCriadoEmLessThanOrderByCriadoEmDesc(
+            LocalDateTime inicio, LocalDateTime fimExclusivo);
+
+    @EntityGraph(attributePaths = {"itens", "itens.produtoTamanho", "itens.produtoTamanho.produto"})
+    List<Pedido> findAllByStatusAndCriadoEmGreaterThanEqualAndCriadoEmLessThanOrderByCriadoEmDesc(
+            com.webstore.backend.model.PedidoStatus status, LocalDateTime inicio, LocalDateTime fimExclusivo);
 }

@@ -167,6 +167,16 @@ export function atualizarStatusEntregaAdmin(id, statusEntrega, codigoRastreio = 
   })
 }
 
+export function gerarRelatorioAdmin({ inicio, fim, status, categoria } = {}) {
+  const params = new URLSearchParams()
+  if (inicio) params.set('inicio', inicio)
+  if (fim) params.set('fim', fim)
+  if (status) params.set('status', status)
+  if (categoria) params.set('categoria', categoria)
+  const query = params.toString()
+  return apiRequest(`/admin/relatorios${query ? `?${query}` : ''}`)
+}
+
 export function buscarCarrinho() {
   return apiRequest('/carrinho')
 }

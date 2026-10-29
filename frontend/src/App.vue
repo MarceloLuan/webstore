@@ -251,6 +251,7 @@ onBeforeUnmount(() => {
       <nav class="site-nav" aria-label="Categorias">
         <RouterLink v-if="isAdmin" class="nav-link nav-admin-link" to="/produtos">Gerenciar produtos</RouterLink>
         <RouterLink v-if="isAdmin" class="nav-link nav-admin-link" to="/pedidos">Gerenciar pedidos</RouterLink>
+        <RouterLink v-if="isAdmin" class="nav-link nav-admin-link" to="/relatorios">Relatórios</RouterLink>
         <RouterLink v-if="isClient" class="nav-link nav-admin-link" to="/meus-pedidos">Meus pedidos</RouterLink>
         <RouterLink
           class="nav-link"
@@ -296,14 +297,14 @@ onBeforeUnmount(() => {
 
 html {
   min-width: 320px;
-  overflow-x: hidden;
+  overflow-x: clip;
   text-size-adjust: 100%;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
-  overflow-x: hidden;
+  overflow-x: clip;
   font-family: 'Avenir Next', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background:
     radial-gradient(circle at top right, #f8f2ec 0%, #f3e8df 58%),
@@ -334,6 +335,9 @@ textarea {
 }
 
 .site-header {
+  position: sticky;
+  top: 0.5rem;
+  z-index: 50;
   width: min(1280px, calc(100% - 1rem));
   margin: 0.65rem auto 0;
   padding: 0.55rem 0.85rem 0.7rem;
@@ -444,6 +448,9 @@ textarea {
   top: calc(100% + 0.6rem);
   right: 0;
   width: min(340px, calc(100vw - 2rem));
+  max-height: calc(100dvh - 12rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 1rem;
   border: 1px solid rgba(106, 27, 44, 0.14);
   border-radius: 18px;
@@ -745,6 +752,7 @@ textarea {
 }
 @media (max-width: 600px) {
   .site-header {
+    top: 0.25rem;
     width: calc(100% - 0.5rem);
     margin-top: 0.25rem;
     border-radius: 16px;
