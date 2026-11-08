@@ -24,5 +24,10 @@ application-secrets.yaml
 # Local output can contain credentials or request data.
 *.log
 
+# Generated test and browser-report output.
+test-results/
+playwright-report/
+.nyc_output/
+
 # Markdown documentation is not versioned in this project.
 *.[mM][dD]
