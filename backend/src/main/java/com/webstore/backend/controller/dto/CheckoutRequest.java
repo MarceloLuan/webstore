@@ -44,7 +44,12 @@ public record CheckoutRequest(ModalidadeRecebimento modalidade, EnderecoRequest 
         private static String campo(String valor, String nome, int limite, boolean obrigatorio) {
             String normalizado = valor == null ? "" : valor.strip();
             if (obrigatorio && normalizado.isBlank()) throw erro(nome + " é obrigatório.");
-            if (normalizado.length() > limite || normalizado.chars().anyMatch(Character::isISOControl)) {
+            if (normalizado.length() > limite || normalizado.codePoints().anyMatch(codePoint ->
+                    Character.isISOControl(codePoint)
+                            || Character.getType(codePoint) == Character.FORMAT
+                            || Character.getType(codePoint) == Character.PRIVATE_USE
+                            || Character.getType(codePoint) == Character.SURROGATE
+                            || Character.getType(codePoint) == Character.OTHER_SYMBOL)) {
                 throw erro(nome + " inválido ou acima do limite de " + limite + " caracteres.");
             }
             return normalizado.isEmpty() ? null : normalizado;

@@ -26,6 +26,17 @@ class DadosContaValidatorTests {
     }
 
     @Test
+    void rejeitaEmojiECaracteresDeControleSemBloquearAcentos() {
+        assertEquals("João da Silva", DadosContaValidator.nome("João da Silva"));
+        assertThrows(ResponseStatusException.class, () -> DadosContaValidator.nome("João 😀"));
+        assertThrows(ResponseStatusException.class, () -> DadosContaValidator.nome("João\nSilva"));
+        assertThrows(ResponseStatusException.class, () -> DadosContaValidator.telefone("(43) 99999-9999\u200B"));
+        assertThrows(ResponseStatusException.class, () -> DadosContaValidator.email("cliente😀@exemplo.com"));
+        assertThrows(ResponseStatusException.class, () -> DadosContaValidator.novaSenha("Senha😀123"));
+        DadosContaValidator.novaSenha("Senha!123");
+    }
+
+    @Test
     void exigeSenhaComLetraNumeroEComprimentoMinimo() {
         assertThrows(ResponseStatusException.class, () -> DadosContaValidator.novaSenha("abcdefg"));
         assertThrows(ResponseStatusException.class, () -> DadosContaValidator.novaSenha("12345678"));

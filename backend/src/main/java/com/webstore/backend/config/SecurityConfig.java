@@ -29,7 +29,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/login", "/api/login/google", "/api/clientes", "/api/confirmacao-email/**", "/api/senha/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/pagamentos/webhook").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/pagamentos/retorno/**").permitAll()
-                    .requestMatchers(HttpMethod.GET, "/api/produtos", "/api/produtos/opcoes", "/api/produtos/*").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/produtos", "/api/produtos/opcoes", "/api/produtos/*").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
@@ -45,4 +45,3 @@ public class SecurityConfig {
         return configuration.getAuthenticationManager();
     }
 }
-

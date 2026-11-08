@@ -7,9 +7,12 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Component
 public class SmtpEmailRecuperacaoSenhaMailer implements EmailRecuperacaoSenhaMailer {
+    private static final Logger LOG = LoggerFactory.getLogger(SmtpEmailRecuperacaoSenhaMailer.class);
     private final ObjectProvider<JavaMailSender> mailSender;
     private final String remetente;
     public SmtpEmailRecuperacaoSenhaMailer(ObjectProvider<JavaMailSender> mailSender,
@@ -28,6 +31,8 @@ public class SmtpEmailRecuperacaoSenhaMailer implements EmailRecuperacaoSenhaMai
                     + "\n\nO link expira em breve e só pode ser usado uma vez. Se não foi você, ignore este e-mail.");
             sender.send(mensagem);
         } catch (Exception erro) {
+            LOG.warn("Falha técnica no SMTP ao enviar e-mail de recuperação: tipo={}, detalhe={}",
+                    erro.getClass().getSimpleName(), erro.getMessage());
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Não foi possível enviar o e-mail agora.");
         }
     }

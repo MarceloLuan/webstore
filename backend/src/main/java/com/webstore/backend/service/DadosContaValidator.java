@@ -22,13 +22,12 @@ final class DadosContaValidator {
     }
 
     static String nome(String valor) {
-        String normalizado = obrigatorio(valor, "Nome");
-        if (normalizado.length() > NOME_MAXIMO) erro("O nome deve ter no máximo " + NOME_MAXIMO + " caracteres.");
-        return normalizado;
+        return EntradaTextoValidator.nome(valor, "Nome", NOME_MAXIMO);
     }
 
     static String email(String valor) {
         String normalizado = obrigatorio(valor, "E-mail").toLowerCase(Locale.ROOT);
+        EntradaTextoValidator.caracteresPermitidos(normalizado, "Informe um e-mail válido.");
         if (normalizado.length() > EMAIL_MAXIMO || !EMAIL.matcher(normalizado).matches()) {
             erro("Informe um e-mail válido.");
         }
@@ -42,11 +41,17 @@ final class DadosContaValidator {
                 || numeros.length() < 10 || numeros.length() > 11) {
             erro("Informe um telefone válido, com DDD.");
         }
+        if (normalizado.codePoints().anyMatch(codePoint -> Character.isISOControl(codePoint)
+                || Character.getType(codePoint) == Character.FORMAT
+                || Character.getType(codePoint) == Character.OTHER_SYMBOL)) {
+            erro("Informe um telefone válido, com DDD.");
+        }
         return normalizado;
     }
 
     static void novaSenha(String valor) {
         if (!StringUtils.hasText(valor)) erro("Senha é obrigatória.");
+        EntradaTextoValidator.caracteresPermitidos(valor, "A senha contém caracteres inválidos.");
         boolean possuiLetra = valor.codePoints().anyMatch(Character::isLetter);
         boolean possuiNumero = valor.codePoints().anyMatch(Character::isDigit);
         if (valor.length() < SENHA_MINIMA || valor.getBytes(StandardCharsets.UTF_8).length > SENHA_MAXIMA_BYTES

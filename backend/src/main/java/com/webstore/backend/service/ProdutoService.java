@@ -81,21 +81,25 @@ public class ProdutoService {
 
     private void aplicarRequest(Produto produto, ProdutoRequest request) {
         produto.setCodigo(normalizarCodigo(request.getCodigo()));
-        produto.setNome(normalizarTexto(request.getNome()));
+        produto.setNome(EntradaTextoValidator.nome(request.getNome(), "Nome do produto", 120));
         produto.setPreco(normalizarPreco(request.getPreco()));
-        produto.setDestaque(StringUtils.hasText(request.getDestaque()) ? request.getDestaque().trim() : "Destaque");
-        produto.setImagem(StringUtils.hasText(request.getImagem()) ? request.getImagem().trim() : null);
-        produto.setDescricao(StringUtils.hasText(request.getDescricao()) ? request.getDescricao().trim() : null);
+        produto.setDestaque(StringUtils.hasText(request.getDestaque())
+                ? EntradaTextoValidator.texto(request.getDestaque(), "Destaque", 120, true)
+                : "Destaque");
+        produto.setImagem(StringUtils.hasText(request.getImagem())
+                ? EntradaTextoValidator.texto(request.getImagem(), "Imagem", 500, true)
+                : null);
+        produto.setDescricao(StringUtils.hasText(request.getDescricao())
+                ? EntradaTextoValidator.texto(request.getDescricao(), "Descrição", 1000, true)
+                : null);
         produto.setAtivo(request.getAtivo() == null || request.getAtivo());
         produto.setCategoria(validarCategoria(request.getCategoria()));
 
-        // tamanhos - reconcile existing
         java.util.List<TamanhoRequest> tamanhoRequests = request.getTamanhos();
         if (tamanhoRequests == null || tamanhoRequests.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe ao menos um tamanho.");
         }
 
-        // build map of existing by label
         java.util.Map<String, ProdutoTamanho> existing = new java.util.HashMap<>();
         for (ProdutoTamanho pt : produto.getTamanhos()) {
             if (pt.getTamanho() != null) {
@@ -122,7 +126,6 @@ public class ProdutoService {
             newList.add(pt);
         }
 
-        // Remove do carrinho variações que deixaram de existir antes do orphanRemoval.
         for (ProdutoTamanho removido : existing.values()) {
             if (removido.getQuantidadeReservada() > 0) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "Não é possível remover um tamanho com estoque reservado.");
@@ -132,7 +135,6 @@ public class ProdutoService {
             }
         }
 
-        // orphanRemoval will delete removed ones
         produto.getTamanhos().clear();
         produto.getTamanhos().addAll(newList);
     }
@@ -197,12 +199,8 @@ public class ProdutoService {
         return value;
     }
 
-    private String normalizarTexto(String value) {
-        return value == null ? null : value.trim();
-    }
-
     private String normalizarCodigo(String value) {
-        return value == null ? null : value.trim().toUpperCase();
+        return EntradaTextoValidator.codigo(value, "Código do produto", 40);
     }
 
     private void validarCodigoUnico(String value, Long produtoIdAtual) {
@@ -235,4 +233,3 @@ public class ProdutoService {
         }
     }
 }
-

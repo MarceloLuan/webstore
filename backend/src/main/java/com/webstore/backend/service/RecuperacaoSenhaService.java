@@ -56,13 +56,16 @@ public class RecuperacaoSenhaService {
         if (anterior != null && anterior.getCriadoEm().plus(intervaloReenvio).isAfter(agora)) return;
         if (anterior != null && anterior.disponivelEm(agora)) anterior.revogar(agora);
         String token = novoToken();
-        tokens.save(new RecuperacaoSenhaToken(usuario, hash(token), agora, agora.plus(expiracao)));
+        String link = frontendUrl + "/redefinir-senha?token="
+                + URLEncoder.encode(token, StandardCharsets.UTF_8);
         try {
-            mailer.enviar(usuario.getEmail(), frontendUrl + "/redefinir-senha?token="
-                    + URLEncoder.encode(token, StandardCharsets.UTF_8));
+            mailer.enviar(usuario.getEmail(), link);
         } catch (RuntimeException falha) {
-            LOG.warn("Falha ao enviar e-mail de recuperação de senha solicitado.");
+            LOG.warn("Falha ao enviar e-mail de recuperação de senha solicitado: {}", falha.getMessage());
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "Não foi possível enviar o e-mail de recuperação agora. Tente novamente mais tarde.", falha);
         }
+        tokens.save(new RecuperacaoSenhaToken(usuario, hash(token), agora, agora.plus(expiracao)));
     }
 
     public void redefinir(String token, String senha, String confirmacaoSenha) {

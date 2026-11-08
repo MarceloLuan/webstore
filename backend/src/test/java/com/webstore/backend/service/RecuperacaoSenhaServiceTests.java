@@ -61,4 +61,26 @@ class RecuperacaoSenhaServiceTests {
         service.solicitar("cliente@exemplo.com");
         verifyNoInteractions(mailer);
     }
+
+    @Test
+    void falhaNoEnvioNaoPersisteTokenENotificaIndisponibilidade() {
+        RecuperacaoSenhaTokenRepository tokens = mock(RecuperacaoSenhaTokenRepository.class);
+        UsuarioRepository usuarios = mock(UsuarioRepository.class);
+        EmailRecuperacaoSenhaMailer mailer = mock(EmailRecuperacaoSenhaMailer.class);
+        var service = new RecuperacaoSenhaService(tokens, usuarios, new BCryptPasswordEncoder(), mailer, 30, 60, "http://localhost:5173");
+        Cliente cliente = new Cliente();
+        cliente.setId(3L);
+        cliente.setEmail("cliente@exemplo.com");
+        cliente.setAtivo(true);
+        cliente.setSenha("hash");
+        when(usuarios.findByEmailForUpdate(cliente.getEmail())).thenReturn(Optional.of(cliente));
+        doThrow(new ResponseStatusException(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE))
+                .when(mailer).enviar(eq(cliente.getEmail()), anyString());
+
+        ResponseStatusException erro = assertThrows(ResponseStatusException.class,
+                () -> service.solicitar(cliente.getEmail()));
+
+        assertEquals(503, erro.getStatusCode().value());
+        verify(tokens, never()).save(any());
+    }
 }

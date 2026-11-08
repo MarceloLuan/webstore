@@ -246,7 +246,8 @@ button:disabled {
   .auth-card input { min-height: 46px; font-size: 16px; }
   .auth-card button { min-height: 46px; }
   .google-login { min-width: 0; overflow: hidden; }
-  .google-login > div { max-width: 100%; }
+  .google-login > div { width: min(100%, 400px); min-width: 0; }
+  :deep(.google-login iframe) { width: 100% !important; max-width: 100%; }
   .forgot-link { min-height: 44px; display: inline-flex; align-items: center; }
 }
 </style>

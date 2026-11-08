@@ -136,6 +136,24 @@ class ProdutoIntegrationTests {
     }
 
     @Test
+    void adminNaoDeveCriarProdutoComEmojiOuCodigoComCaracterEspecial() throws Exception {
+        usuarioRepository.save(new Administrador("Admin Teste", "admin@test.com", "11999999999", passwordEncoder.encode("123456")));
+        String token = obterToken("admin@test.com", "123456");
+        String payload = "{" +
+                "\"codigo\":\"SAIA😀\"," +
+                "\"nome\":\"Saia Midi\"," +
+                "\"preco\":\"109,90\"," +
+                "\"categoria\":\"Saia\"," +
+                "\"tamanhos\":[{\"tamanho\":\"P\",\"quantidade\":10}]}";
+
+        mockMvc.perform(post("/api/admin/produtos")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void adminDeveAtualizarCategoriaDoProduto() throws Exception {
         usuarioRepository.save(new Administrador("Admin Teste", "admin@test.com", "11999999999", passwordEncoder.encode("123456")));
         String token = obterToken("admin@test.com", "123456");
@@ -320,4 +338,3 @@ class ProdutoIntegrationTests {
         return fim > inicio ? json.substring(inicio, fim) : "";
     }
 }
-

@@ -39,7 +39,9 @@ public class GoogleLoginService {
         limits.verificarCadastro(ip);
         Cliente usuario = new Cliente();
         String nome = claims.getClaimAsString("name");
-        usuario.setNome(nome == null || nome.isBlank() ? "Cliente" : nome.strip().substring(0, Math.min(nome.strip().length(), 120)));
+        usuario.setNome(nome == null || nome.isBlank()
+                ? "Cliente"
+                : DadosContaValidator.nome(nome.strip().substring(0, Math.min(nome.strip().length(), 120))));
         usuario.setEmail(email);
         usuario.setAtivo(true);
         // Google is authoritative for Gmail and verified Workspace addresses.
